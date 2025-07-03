@@ -1,0 +1,17 @@
+[Unit]
+Description=Tonel Telegram Bot
+After=syslog.target
+
+[Service]
+Type=simple
+Restart=always
+WorkingDirectory=/x/tonel/
+EnvironmentFile=/x/tonel/.env
+ExecStart=/x/tonel/target/release/tonel
+KillSignal=SIGQUIT
+StandardError=file:/x/bihosh/stderr.log
+StandardOutput=file:/x/bihosh/stdout.log
+NotifyAccess=all
+
+[Install]
+WantedBy=multi-user.target
