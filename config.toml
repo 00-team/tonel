@@ -1,0 +1,5 @@
+[bot]
+admins = [123456789_you_id]
+dev = 123456789_your_id
+token = "<your bot token>"
+storage = "tonel.tx.db"
