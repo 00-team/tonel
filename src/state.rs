@@ -61,9 +61,10 @@ pub enum State {
     CurrentDegree,
 }
 
-#[derive(BotCommands, Clone)]
+#[derive(Debug, BotCommands, Clone, Copy)]
 #[command(rename_rule = "snake_case")]
-pub enum Command {
+/// Tonel Bot Commands
+pub enum TonelCommands {
     Start,
 }
 

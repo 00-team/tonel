@@ -18,7 +18,7 @@ features = ["socks", "rustls-tls", "charset", "http2"]
 
 [dependencies.teloxide]
 version = "0.16.0"
-features = ["sqlite-storage-rustls", "macros"]
+features = ["sqlite-storage-rustls", "macros", "throttle"]
 
 [dependencies.sqlx]
 version = "0.8.6"

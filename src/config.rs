@@ -1,10 +1,15 @@
+use sqlx::{
+    SqlitePool,
+    sqlite::{SqliteConnectOptions, SqliteJournalMode},
+};
 use std::{
     collections::HashSet,
+    str::FromStr,
     sync::{Arc, OnceLock},
 };
 use teloxide::{
     Bot, dispatching::dialogue::ErasedStorage, net::default_reqwest_settings,
-    types::UserId,
+    prelude::RequesterExt, types::UserId,
 };
 
 use crate::state::State;
@@ -21,8 +26,14 @@ mod config_toml {
     }
 
     #[derive(Debug, serde::Deserialize)]
+    pub struct Db {
+        pub path: String,
+    }
+
+    #[derive(Debug, serde::Deserialize)]
     pub struct ConfigToml {
         pub bot: Bot,
+        pub db: Db,
     }
 
     fn path() -> PathBuf {
@@ -57,6 +68,7 @@ mod config_toml {
 pub struct Config {
     bot_token: String,
     bot_storage: String,
+    db_path: String,
     pub admins: HashSet<UserId>,
     pub dev: UserId,
 }
@@ -95,9 +107,10 @@ impl Config {
 
         Self {
             bot_token: ct.bot.token,
+            bot_storage: ct.bot.storage,
+            db_path: ct.db.path,
             admins: ct.bot.admins.iter().map(|id| UserId(*id)).collect(),
             dev: UserId(ct.bot.dev),
-            bot_storage: ct.bot.storage,
         }
     }
 
@@ -106,7 +119,7 @@ impl Config {
         STATE.get_or_init(Self::init)
     }
 
-    pub fn init_bot() -> Bot {
+    pub fn init_bot() -> teloxide::adaptors::Throttle<Bot> {
         let config = Self::get();
         let builder = default_reqwest_settings();
         let client = if cfg!(debug_assertions) {
@@ -119,6 +132,7 @@ impl Config {
         .expect("could not build the bot client");
 
         Bot::with_client(&config.bot_token, client)
+            .throttle(teloxide::adaptors::throttle::Limits::default())
     }
 
     pub async fn init_storage() -> Arc<ErasedStorage<State>> {
@@ -131,5 +145,19 @@ impl Config {
             .await
             .expect("could not init teloxide sqlite state storage")
             .erase()
+    }
+
+    pub async fn init_db() -> SqlitePool {
+        let conf = Self::get();
+        let uri = format!("sqlite://{}", conf.db_path);
+        let cpt = SqliteConnectOptions::from_str(&uri)
+            .expect(&format!(
+                "could not init sqlite connection with uri: {uri}"
+            ))
+            .journal_mode(SqliteJournalMode::Off);
+
+        SqlitePool::connect_with(cpt)
+            .await
+            .expect(&format!("sqlite connection failed with: {uri}"))
     }
 }
