@@ -3,3 +3,4 @@ Cargo.lock
 config.*.toml
 tonel.tx.db
 tonel.main.db
+.env

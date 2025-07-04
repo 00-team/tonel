@@ -1,0 +1,3 @@
+#!/bin/bash
+
+DATABASE_URL="sqlite://tonel.main.db" cargo sqlx db setup
