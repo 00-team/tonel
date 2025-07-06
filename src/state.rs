@@ -1,35 +1,18 @@
-use std::error::Error;
 use teloxide::dispatching::dialogue;
 use teloxide::dispatching::dialogue::ErasedStorage;
-use teloxide::macros::BotCommands;
 
 pub type Store = dialogue::Dialogue<State, ErasedStorage<State>>;
-pub type HR = Result<(), Box<dyn Error + Send + Sync>>;
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum KeyData {
     Unknown,
-    Register,
-    Name,
-    Phone,
-    Age,
-    Ssn,
-    Complete,
-    Cancel,
-    IdCard,
-    MilitaryService,
-    CurrentDegree,
-    Degree,
-    DegreeMajor,
-    DegreeMajorSelect(u64),
-    DegreeAssociate,
-    DegreeBachelorLinked,
-    DegreeBachelorUnLinked,
-    DegreeMaster,
-    ActionAccept(u64),
-    ActionReject(u64),
-    ActionClear(u64),
+    GetProxy,
+    GetV2ray,
+    MyInviteLinks,
+    GetDailyPoints,
+    Menu,
+    // DegreeMajorSelect(u64),
 }
 
 impl From<KeyData> for String {
@@ -48,24 +31,7 @@ impl From<String> for KeyData {
 #[serde(rename_all = "snake_case")]
 pub enum State {
     #[default]
-    Start,
-    UserForm,
-    Name,
-    Age,
-    Ssn,
-    Phone,
-    Degree,
-    DegreeMajor,
-    IdCard,
-    MilitaryService,
-    CurrentDegree,
-}
-
-#[derive(Debug, BotCommands, Clone, Copy)]
-#[command(rename_rule = "snake_case")]
-/// Tonel Bot Commands
-pub enum TonelCommands {
-    Start,
+    Menu,
 }
 
 pub trait CutOff {

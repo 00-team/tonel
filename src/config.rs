@@ -80,9 +80,8 @@ pub struct Config {
 // }
 
 impl Config {
-    // pub fn gooje_url(&self, path: &str) -> String {
-    //     format!("{}{path}", self.gooje_host)
-    // }
+    /// 24 hours
+    pub const DAILY_POINTS_DELAY: i64 = 24 * 3600;
 
     fn init() -> Self {
         let ct = config_toml::get();

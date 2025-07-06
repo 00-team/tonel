@@ -1,10 +1,29 @@
 
-create table if not exists users (
-    id integer primary key not null,
+create table if not exists karbars (
+    tid integer primary key not null,
     fullname text not null,
     username text,
-    banned boolean not null default false
+    banned boolean not null default false,
+    created_at integer not null,
+    updated_at integer not null,
+    points integer not null default 0,
+    last_daily_point_at integer not null default 0
 );
+
+create table if not exists invite_links (
+    link text primary key not null,
+    karbar integer not null references karbars(tid) on delete cascade,
+    count integer not null default 0
+);
+
+create table if not exists settings (
+    id integer primary key not null,
+    invite_points integer not null default 100,
+    daily_points integer not null default 100
+);
+
+insert into settings(id) values(1);
+
 
 /*
 create table if not exists users (
