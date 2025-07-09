@@ -1,5 +1,6 @@
 use teloxide::dispatching::dialogue;
 use teloxide::dispatching::dialogue::ErasedStorage;
+use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup};
 
 pub type Store = dialogue::Dialogue<State, ErasedStorage<State>>;
 
@@ -8,11 +9,37 @@ pub type Store = dialogue::Dialogue<State, ErasedStorage<State>>;
 pub enum KeyData {
     Unknown,
     GetProxy,
+    FreeVpn,
     GetV2ray,
     MyInviteLinks,
     GetDailyPoints,
     Menu,
+    Nothing,
+    AdminForceJoinList,
+    AdminSendAll,
+    AdminProxyList,
+    AdminV2rayList,
+    AdminSetFreeVpn,
+    /// set page
+    BookPagination(u32),
+    BookItem(u32, i64),
+    BookAdd,
+    AdminProxyAdd,
+    AdminProxyDel(u32, i64),
+    AdminProxyDisabledToggle(u32, i64),
     // DegreeMajorSelect(u64),
+}
+
+impl KeyData {
+    pub fn main_menu_btn() -> InlineKeyboardButton {
+        InlineKeyboardButton::callback("💼 منو", KeyData::Menu)
+    }
+    pub fn main_menu() -> InlineKeyboardMarkup {
+        InlineKeyboardMarkup::new([[Self::main_menu_btn()]])
+    }
+    pub fn nothing() -> InlineKeyboardButton {
+        InlineKeyboardButton::callback("👋 هیچی", KeyData::Nothing)
+    }
 }
 
 impl From<KeyData> for String {
@@ -21,9 +48,14 @@ impl From<KeyData> for String {
     }
 }
 
-impl From<String> for KeyData {
-    fn from(value: String) -> Self {
-        serde_json::from_str(&value).unwrap_or(KeyData::Unknown)
+impl From<&str> for KeyData {
+    fn from(value: &str) -> Self {
+        serde_json::from_str(value).unwrap_or(KeyData::Unknown)
+    }
+}
+impl From<&String> for KeyData {
+    fn from(value: &String) -> Self {
+        Self::from(value.as_str())
     }
 }
 
@@ -32,6 +64,8 @@ impl From<String> for KeyData {
 pub enum State {
     #[default]
     Menu,
+    AdminProxyList,
+    AdminProxyAdd,
 }
 
 pub trait CutOff {

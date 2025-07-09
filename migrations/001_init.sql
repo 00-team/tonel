@@ -22,6 +22,24 @@ create table if not exists settings (
     daily_points integer not null default 100
 );
 
+create table if not exists proxies (
+    id integer primary key not null,
+    server text not null,
+    port text not null,
+    secret text not null,
+    up_votes integer not null default 0,
+    dn_votes integer not null default 0,
+    disabled boolean not null default false,
+    unique (server, port, secret)
+);
+
+create table if not exists proxy_votes (
+    id integer primary key not null,
+    kind integer not null,
+    karbar integer not null references karbars(tid) on delete cascade,
+    proxy integer not null references proxies(id) on delete cascade
+);
+
 insert into settings(id) values(1);
 
 

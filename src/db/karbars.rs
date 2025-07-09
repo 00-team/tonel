@@ -1,8 +1,9 @@
+use crate::config::Config;
 use crate::Ctx;
 use crate::db::InviteLink;
 use crate::error::{AppErr, err};
 use crate::utils::now;
-use teloxide::types::{ChatId, User};
+use teloxide::types::{ChatId, User, UserId};
 
 #[derive(Debug, sqlx::FromRow)]
 pub struct Karbar {
@@ -20,6 +21,11 @@ pub struct Karbar {
 impl Karbar {
     pub const fn cid(&self) -> ChatId {
         ChatId(self.tid)
+    }
+
+    pub fn is_admin(&self) -> bool {
+        let conf = Config::get();
+        conf.admins.contains(&UserId(self.tid as u64))
     }
 
     pub async fn init(ctx: &Ctx, user: &User, r: &str) -> Result<Self, AppErr> {
@@ -73,7 +79,6 @@ impl Karbar {
         karbar.username = username;
         karbar.fullname = fullname;
         karbar.updated_at = updated_at;
-        karbar.tid = tid;
 
         karbar.set(ctx).await?;
 

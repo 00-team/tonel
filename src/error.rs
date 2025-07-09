@@ -1,6 +1,5 @@
 use std::fmt::Debug;
-
-use teloxide::{RequestError, dptree};
+use teloxide::{DownloadError, RequestError};
 
 #[derive(Debug)]
 pub enum Worm {
@@ -10,6 +9,7 @@ pub enum Worm {
     Banned,
     TxRq(RequestError),
     Sqlx(sqlx::Error),
+    Down(DownloadError),
 }
 
 #[derive(Debug)]
@@ -20,7 +20,19 @@ pub struct AppErr {
 
 impl From<RequestError> for AppErr {
     fn from(value: RequestError) -> Self {
-        Self { debug: format!("[{}]: {value:#?}", value.to_string()), worm: Worm::TxRq(value) }
+        Self {
+            debug: format!("[{}]: {value:#?}", value.to_string()),
+            worm: Worm::TxRq(value),
+        }
+    }
+}
+
+impl From<DownloadError> for AppErr {
+    fn from(value: DownloadError) -> Self {
+        Self {
+            debug: format!("[{}]: {value:#?}", value),
+            worm: Worm::Down(value),
+        }
     }
 }
 
