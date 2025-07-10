@@ -7,20 +7,20 @@ create table if not exists karbars (
     created_at integer not null,
     updated_at integer not null,
     points integer not null default 0,
-    last_daily_point_at integer not null default 0
-);
-
-create table if not exists invite_links (
-    link text primary key not null,
-    karbar integer not null references karbars(tid) on delete cascade,
-    count integer not null default 0
+    last_daily_point_at integer not null default 0,
+    invite_code text not null unique
 );
 
 create table if not exists settings (
     id integer primary key not null,
     invite_points integer not null default 100,
-    daily_points integer not null default 100
+    daily_points integer not null default 100,
+    proxy_cost integer not null default 100,
+    v2ray_cost integer not null default 100,
+    vip_cost integer not null default 200,
+    vip_msg integer
 );
+insert into settings(id) values(1);
 
 create table if not exists proxies (
     id integer primary key not null,
@@ -37,10 +37,10 @@ create table if not exists proxy_votes (
     id integer primary key not null,
     kind integer not null,
     karbar integer not null references karbars(tid) on delete cascade,
-    proxy integer not null references proxies(id) on delete cascade
+    proxy integer not null references proxies(id) on delete cascade,
+    unique (karbar, proxy)
 );
 
-insert into settings(id) values(1);
 
 
 /*

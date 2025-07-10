@@ -69,6 +69,8 @@ impl<T: BookItem> Book<T> {
             layout.push(row);
         }
 
+        layout.push(vec![KeyData::main_menu_btn()]);
+
         InlineKeyboardMarkup::new(layout)
     }
 }

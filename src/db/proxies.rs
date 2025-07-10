@@ -19,11 +19,20 @@ impl Proxy {
         let ttv = self.up_votes + self.dn_votes;
         let mut upp = 0;
         let mut dnp = 0;
-        if ttv > 0 {
+        if self.up_votes > 0 {
             upp = (100 / (ttv / self.up_votes)) as u8;
+        }
+        if self.dn_votes > 0 {
             dnp = (100 / (ttv / self.dn_votes)) as u8;
         }
         (upp, dnp)
+    }
+
+    pub fn url(&self) -> String {
+        format!(
+            "https://t.me/proxy?server={}&port={}&secret={}",
+            self.server, self.port, self.secret
+        )
     }
 
     pub fn from_link(link: &str) -> Option<Self> {
@@ -95,6 +104,18 @@ impl Proxy {
             .await?)
     }
 
+    pub async fn get_good(ctx: &Ctx) -> Option<Self> {
+        sqlx::query_as!(
+            Proxy,
+            "select * from proxies
+            where NOT disabled order by random() limit 1"
+        )
+        .fetch_optional(&ctx.db)
+        .await
+        .ok()
+        .flatten()
+    }
+
     pub async fn del(ctx: &Ctx, id: i64) -> Result<(), AppErr> {
         sqlx::query!("delete from proxies where id = ?", id)
             .execute(&ctx.db)
@@ -109,7 +130,72 @@ impl Proxy {
         )
         .execute(&ctx.db)
         .await?;
-        
+
+        Ok(())
+    }
+
+    pub async fn votes_reset(ctx: &Ctx, id: i64) -> Result<(), AppErr> {
+        sqlx::query!(
+            "update proxies set up_votes = 0, dn_votes = 0 where id = ?",
+            id
+        )
+        .execute(&ctx.db)
+        .await?;
+
+        sqlx::query!("delete from proxy_votes where proxy = ?", id)
+            .execute(&ctx.db)
+            .await?;
+
+        Ok(())
+    }
+
+    pub async fn vote_get(ctx: &Ctx, karbar: i64, proxy: i64) -> Option<i8> {
+        sqlx::query!(
+            "select kind from proxy_votes where karbar = ? AND proxy = ?",
+            karbar,
+            proxy
+        )
+        .fetch_optional(&ctx.db)
+        .await
+        .ok()
+        .flatten()
+        .map(|v| if v.kind >= 0 { 1 } else { -1 })
+    }
+
+    pub async fn vote_add(
+        ctx: &Ctx, karbar: i64, proxy: i64, mut kind: i8,
+    ) -> Result<(), AppErr> {
+        if kind >= 0 {
+            kind = 1;
+        } else {
+            kind = -1;
+        }
+
+        sqlx::query!(
+            "insert into proxy_votes(kind, karbar, proxy) values(?,?,?)",
+            kind,
+            karbar,
+            proxy
+        )
+        .execute(&ctx.db)
+        .await?;
+
+        if kind == 1 {
+            sqlx::query!(
+                "update proxies set up_votes = up_votes + 1 where id = ?",
+                proxy
+            )
+            .execute(&ctx.db)
+            .await?;
+        } else {
+            sqlx::query!(
+                "update proxies set dn_votes = dn_votes + 1 where id = ?",
+                proxy
+            )
+            .execute(&ctx.db)
+            .await?;
+        }
+
         Ok(())
     }
 }
@@ -117,15 +203,12 @@ impl Proxy {
 impl Display for Proxy {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let (upp, dnp) = self.up_dn_pct();
-        let secret = escape(&self.secret);
         write!(
             f,
-            r#"<a href="https://t.me/proxy?server={}&port={}&secret={}">{}:{}</a> "#,
-            self.server, self.port, secret, self.server, self.port
-        )?;
-        write!(
-            f,
-            "{upp}% ({}) 👍 | {dnp}% ({}) 👎 ({}) {}",
+            r#"<a href="{}">{}:{}</a> {upp}% ({}) 👍 | {dnp}% ({}) 👎 ({}) {}"#,
+            escape(&self.url()),
+            self.server,
+            self.port,
             self.up_votes,
             self.dn_votes,
             self.up_votes + self.dn_votes,

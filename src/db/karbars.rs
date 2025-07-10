@@ -1,8 +1,7 @@
 use crate::config::Config;
-use crate::Ctx;
-use crate::db::InviteLink;
 use crate::error::{AppErr, err};
 use crate::utils::now;
+use crate::{Ctx, utils};
 use teloxide::types::{ChatId, User, UserId};
 
 #[derive(Debug, sqlx::FromRow)]
@@ -16,6 +15,7 @@ pub struct Karbar {
     pub updated_at: i64,
     pub points: i64,
     pub last_daily_point_at: i64,
+    pub invite_code: String,
 }
 
 impl Karbar {
@@ -41,7 +41,20 @@ impl Karbar {
         .await?;
 
         let Some(mut karbar) = karbar else {
-            let _ = InviteLink::invited(ctx, r).await;
+            let _ = Self::invited(ctx, r).await;
+
+            let code = loop {
+                let code = utils::random_code();
+                let r = sqlx::query!(
+                    "select tid from karbars where invite_code = ?",
+                    code
+                )
+                .fetch_optional(&ctx.db)
+                .await?;
+                if r.is_none() {
+                    break code;
+                }
+            };
 
             sqlx::query! {"
             insert into karbars (
@@ -49,13 +62,15 @@ impl Karbar {
                 fullname,
                 username,
                 created_at,
-                updated_at
-            ) values(?,?,?,?,?)",
+                updated_at,
+                invite_code
+            ) values(?,?,?,?,?,?)",
                 tid,
                 fullname,
                 username,
                 updated_at,
                 updated_at,
+                code
             }
             .execute(&ctx.db)
             .await?;
@@ -69,6 +84,7 @@ impl Karbar {
                 created_at: updated_at,
                 points: 0,
                 last_daily_point_at: 0,
+                invite_code: code,
             });
         };
 
@@ -107,6 +123,28 @@ impl Karbar {
         }
         .execute(&ctx.db)
         .await?;
+
+        Ok(())
+    }
+
+    pub async fn invited(ctx: &Ctx, code: &str) -> Result<(), AppErr> {
+        if code.is_empty() {
+            return Ok(());
+        }
+
+        let karbar = sqlx::query_as!(
+            Karbar,
+            "select * from karbars where invite_code = ?",
+            code
+        )
+        .fetch_optional(&ctx.db)
+        .await?;
+
+        let Some(mut karbar) = karbar else { return Ok(()) };
+
+        let added = { ctx.settings.lock().await.invite_points };
+        karbar.points += added;
+        karbar.set(ctx).await?;
 
         Ok(())
     }

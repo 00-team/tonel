@@ -4,42 +4,71 @@ use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup};
 
 pub type Store = dialogue::Dialogue<State, ErasedStorage<State>>;
 
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, Copy)]
 #[serde(rename_all = "snake_case")]
 pub enum KeyData {
     Unknown,
+    // global
+    Menu,
     GetProxy,
-    FreeVpn,
+    GetVip,
     GetV2ray,
     MyInviteLinks,
     GetDailyPoints,
-    Menu,
-    Nothing,
-    AdminForceJoinList,
-    AdminSendAll,
-    AdminProxyList,
-    AdminV2rayList,
-    AdminSetFreeVpn,
+    ProxyVote(i64, i8),
+    // admin global
+    Ag(AdminGlobal),
+
     /// set page
     BookPagination(u32),
     BookItem(u32, i64),
     BookAdd,
-    AdminProxyAdd,
-    AdminProxyDel(u32, i64),
-    AdminProxyDisabledToggle(u32, i64),
-    // DegreeMajorSelect(u64),
 }
+
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, Copy)]
+#[serde(rename_all = "snake_case")]
+pub enum AdminGlobal {
+    ForceJoinList,
+    SendAll,
+    ProxyList,
+    V2rayList,
+    Settings,
+    ProxyDel(u32, i64),
+    ProxyVotesReset(u32, i64),
+    ProxyDisabledToggle(u32, i64),
+    SetDailyPt,
+    SetInvitPt,
+    SetProxyCost,
+    SetV2rayCost,
+    SetVipCost,
+    SetVipMsg,
+}
+
+macro_rules! kd {
+    (gg, $ident:ident) => {
+        crate::state::KeyData::Ag(crate::state::AdminGlobal::$ident)
+    };
+    (ag, $ex:expr) => {
+        crate::state::KeyData::Ag($ex)
+    };
+    ($ident:ident) => {
+        crate::state::KeyData::$ident
+    };
+}
+pub(crate) use kd;
 
 impl KeyData {
     pub fn main_menu_btn() -> InlineKeyboardButton {
         InlineKeyboardButton::callback("💼 منو", KeyData::Menu)
     }
+
     pub fn main_menu() -> InlineKeyboardMarkup {
         InlineKeyboardMarkup::new([[Self::main_menu_btn()]])
     }
-    pub fn nothing() -> InlineKeyboardButton {
-        InlineKeyboardButton::callback("👋 هیچی", KeyData::Nothing)
-    }
+
+    // pub fn nothing() -> InlineKeyboardButton {
+    //     InlineKeyboardButton::callback("👋 هیچی", KeyData::Nothing)
+    // }
 }
 
 impl From<KeyData> for String {
@@ -59,13 +88,19 @@ impl From<&String> for KeyData {
     }
 }
 
-#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Default, serde::Serialize, serde::Deserialize, Clone, Copy)]
 #[serde(rename_all = "snake_case")]
 pub enum State {
     #[default]
     Menu,
     AdminProxyList,
     AdminProxyAdd,
+    AdminSetDailyPt,
+    AdminSetInvitPt,
+    AdminSetProxyCost,
+    AdminSetV2rayCost,
+    AdminSetVipCost,
+    AdminSetVipMsg,
 }
 
 pub trait CutOff {

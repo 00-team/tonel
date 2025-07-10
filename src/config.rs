@@ -23,6 +23,7 @@ mod config_toml {
         pub admins: Vec<u64>,
         pub dev: u64,
         pub storage: String,
+        pub username: String,
     }
 
     #[derive(Debug, serde::Deserialize)]
@@ -71,38 +72,21 @@ pub struct Config {
     db_path: String,
     pub admins: HashSet<UserId>,
     pub dev: UserId,
+    pub start_url: reqwest::Url,
+    /// without @
+    pub bot_username: String,
 }
-
-// macro_rules! evar {
-//     ($name:literal) => {
-//         std::env::var($name).expect(concat!($name, " was not found in env"))
-//     };
-// }
 
 impl Config {
     /// 24 hours
     pub const DAILY_POINTS_DELAY: i64 = 24 * 3600;
+    pub const CODE_ABC: &[u8] =
+        b"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 
     fn init() -> Self {
         let ct = config_toml::get();
-
-        // use reqwest::header;
-        // let mut gooje_headers = header::HeaderMap::new();
-        // gooje_headers.insert(
-        //     header::AUTHORIZATION,
-        //     header::HeaderValue::from_str(&format!(
-        //         "golem {}",
-        //         et.gooje.golem_auth
-        //     ))
-        //     .expect("invalid auth header for gooje client"),
-        // );
-
-        // let gooje_client = Client::builder()
-        //     .default_headers(gooje_headers)
-        //     .connect_timeout(std::time::Duration::from_secs(10))
-        //     .connection_verbose(false)
-        //     .build()
-        //     .expect("could not build gooje client");
+        let su = format!("https://t.me/{}?start=x", ct.bot.username);
+        let start_url = reqwest::Url::from_str(&su).expect("invalid start url");
 
         Self {
             bot_token: ct.bot.token,
@@ -110,6 +94,8 @@ impl Config {
             db_path: ct.db.path,
             admins: ct.bot.admins.iter().map(|id| UserId(*id)).collect(),
             dev: UserId(ct.bot.dev),
+            bot_username: ct.bot.username,
+            start_url,
         }
     }
 

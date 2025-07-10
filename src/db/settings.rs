@@ -1,17 +1,30 @@
-use sqlx::SqlitePool;
 use crate::error::AppErr;
+use sqlx::SqlitePool;
 
 #[derive(Debug, Clone)]
 /// Tonel Bot Settings
 pub struct Settings {
+    #[allow(dead_code)]
     id: i64,
     pub invite_points: i64,
     pub daily_points: i64,
+    pub proxy_cost: i64,
+    pub v2ray_cost: i64,
+    pub vip_cost: i64,
+    pub vip_msg: Option<i64>,
 }
 
 impl Default for Settings {
     fn default() -> Self {
-        Self { id: 1, invite_points: 100, daily_points: 100 }
+        Self {
+            id: 1,
+            invite_points: 100,
+            daily_points: 100,
+            proxy_cost: 100,
+            v2ray_cost: 100,
+            vip_cost: 200,
+            vip_msg: None,
+        }
     }
 }
 
@@ -48,11 +61,19 @@ impl Settings {
         sqlx::query! {"
             update settings set 
             invite_points = ?,
-            daily_points = ?
+            daily_points = ?,
+            proxy_cost = ?,
+            v2ray_cost = ?,
+            vip_cost = ?,
+            vip_msg = ?
             where id = 1
         ",
             self.invite_points,
-            self.daily_points
+            self.daily_points,
+            self.proxy_cost,
+            self.v2ray_cost,
+            self.vip_cost,
+            self.vip_msg,
         }
         .execute(pool)
         .await?;
