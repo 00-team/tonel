@@ -4,7 +4,7 @@ use crate::utils::now;
 use crate::{Ctx, utils};
 use teloxide::types::{ChatId, User, UserId};
 
-#[derive(Debug, sqlx::FromRow)]
+#[derive(Debug, sqlx::FromRow, Clone)]
 pub struct Karbar {
     pub tid: i64,
     pub fullname: String,

@@ -180,21 +180,31 @@ impl Proxy {
         .execute(&ctx.db)
         .await?;
 
+        let mut px = Self::get(ctx, proxy).await?;
+
         if kind == 1 {
-            sqlx::query!(
-                "update proxies set up_votes = up_votes + 1 where id = ?",
-                proxy
-            )
-            .execute(&ctx.db)
-            .await?;
+            px.up_votes += 1;
         } else {
-            sqlx::query!(
-                "update proxies set dn_votes = dn_votes + 1 where id = ?",
-                proxy
-            )
-            .execute(&ctx.db)
-            .await?;
+            px.dn_votes += 1;
         }
+
+        if px.up_votes + px.dn_votes > 100 {
+            let (_, dnp) = px.up_dn_pct();
+            if dnp > 60 {
+                px.disabled = true;
+            }
+        }
+
+        sqlx::query!(
+            "update proxies set
+            up_votes = ?, dn_votes = ?, disabled = ? where id = ?",
+            px.up_votes,
+            px.dn_votes,
+            px.disabled,
+            px.id
+        )
+        .execute(&ctx.db)
+        .await?;
 
         Ok(())
     }

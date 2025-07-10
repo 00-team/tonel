@@ -1,6 +1,7 @@
 use config::Config;
 use db::{Karbar, Settings};
 use error::AppErr;
+use session::Session;
 use sqlx::SqlitePool;
 use state::{State, Store};
 use std::fmt::Debug;
@@ -20,6 +21,7 @@ mod db;
 mod error;
 mod logger;
 mod payam;
+mod session;
 mod state;
 mod utils;
 
@@ -117,19 +119,41 @@ pub async fn handle_commands(
             let val = it.next().unwrap_or_default();
             let code = if key == "inv" { val } else { "" };
             let karbar = Karbar::init(&ctx, &user, code).await?;
+            let s = Session {
+                cid: msg.chat.id,
+                settings: Settings::get(&ctx.db).await,
+                ctx,
+                now: utils::now(),
+                karbar,
+                conf: Config::get(),
+                bot,
+                store,
+            };
+
+            s.send_welcome().await?;
 
             match key {
                 "hi" => {
-                    bot.send_message(user.id, format!("hi {val}")).await?;
+                    s.bot.send_message(user.id, format!("hi {val}")).await?;
                 }
                 _ => {
-                    utils::send_menu(&bot, &store, &karbar).await?;
+                    s.send_menu().await?;
                 }
             }
         }
         TonelCommand::Menu => {
             let karbar = Karbar::init(&ctx, &user, "").await?;
-            utils::send_menu(&bot, &store, &karbar).await?;
+            let s = Session {
+                cid: msg.chat.id,
+                settings: Settings::get(&ctx.db).await,
+                ctx,
+                now: utils::now(),
+                karbar,
+                conf: Config::get(),
+                bot,
+                store,
+            };
+            s.send_menu().await?;
         }
         TonelCommand::Help => {
             let desc = TonelCommand::descriptions().to_string();

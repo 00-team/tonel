@@ -25,6 +25,15 @@ pub enum KeyData {
     BookAdd,
 }
 
+pub mod keyboard {
+    pub const GET_PROXY: &str = "پروکسی";
+    pub const GET_VIP: &str = "کانفیگ VIP 🍓";
+    pub const GET_V2RAY: &str = "V2ray";
+    pub const DAILY_PONT: &str = "امتیاز روزانه";
+    pub const INVITE: &str = "دعوت دوستان";
+    pub const MENU: &str = "منو 🧻";
+}
+
 #[derive(Debug, serde::Serialize, serde::Deserialize, Clone, Copy)]
 #[serde(rename_all = "snake_case")]
 pub enum AdminGlobal {
@@ -42,6 +51,11 @@ pub enum AdminGlobal {
     SetV2rayCost,
     SetVipCost,
     SetVipMsg,
+    FlyerList,
+    FlyerDel(u32, i64),
+    FlyerViewsReset(u32, i64),
+    FlyerDisabledToggle(u32, i64),
+    FlyerSetMaxViews(u32, i64),
 }
 
 macro_rules! kd {
@@ -88,13 +102,21 @@ impl From<&String> for KeyData {
     }
 }
 
-#[derive(Debug, Default, serde::Serialize, serde::Deserialize, Clone, Copy)]
+#[derive(Debug, Default, serde::Serialize, serde::Deserialize, Clone)]
 #[serde(rename_all = "snake_case")]
 pub enum State {
     #[default]
     Menu,
     AdminProxyList,
     AdminProxyAdd,
+
+    AdminFlyerList,
+    AdminFlyerAdd,
+    AdminFlyerSendMessage {
+        label: String,
+    },
+    AdminFlyerSetMaxView(i64),
+
     AdminSetDailyPt,
     AdminSetInvitPt,
     AdminSetProxyCost,

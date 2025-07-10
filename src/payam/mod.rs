@@ -1,31 +1,21 @@
 use crate::{
     Ctx, HR, TB,
     config::Config,
-    db::{Karbar, Proxy, Settings},
-    state::{KeyData, State, Store},
-    utils::send_menu,
+    db::{Flyer, Karbar, Proxy, Settings},
+    error::AppErr,
+    session::Session,
+    state::{KeyData, State, Store, keyboard},
+    utils,
 };
+use std::str::FromStr;
 use teloxide::{
-    net::Download,
-    payloads::{CopyMessageSetters, SendMessageSetters},
-    prelude::Requester,
-    types::{
-        ChatId, InlineKeyboardButton, InlineKeyboardMarkup, Message, User,
-    },
+    net::Download, payloads::SendMessageSetters, prelude::Requester,
+    types::Message,
 };
 
 pub struct Payam {
-    bot: TB,
-    store: Store,
-    ctx: Ctx,
-    user: User,
     msg: Message,
-    karbar: Karbar,
-    is_admin: bool,
-    state: State,
-    cid: ChatId,
-    conf: &'static Config,
-    settings: Settings,
+    s: Session,
 }
 
 impl Payam {
@@ -36,38 +26,129 @@ impl Payam {
         let is_admin = karbar.is_admin();
         let conf = Config::get();
         let settings = Settings::get(&ctx.db).await;
+        let cid = msg.chat.id;
 
         let mut payam = Self {
-            conf,
-            settings,
-            cid: msg.chat.id,
-            karbar,
-            is_admin,
-            state,
-            ctx,
-            store,
-            bot,
-            user: user.clone(),
+            s: Session {
+                bot,
+                settings,
+                cid,
+                store,
+                karbar,
+                ctx,
+                conf,
+                now: utils::now(),
+            },
             msg,
         };
+
+        async fn gn<T: FromStr>(
+            s: &Session, msg: &Message,
+        ) -> Result<Option<T>, AppErr> {
+            let Some(txt) = msg.text() else {
+                s.notify("پیام متنی ندارد ❌").await?;
+                return Ok(None);
+            };
+
+            let Ok(value) = txt.parse::<T>() else {
+                s.notify("پیام شما عدد نیست ❌").await?;
+                return Ok(None);
+            };
+
+            Ok(Some(value))
+        }
+
+        macro_rules! set_int {
+            ($val:ident) => {{
+                let Some(value) = gn(&payam.s, &payam.msg).await? else {
+                    return Ok(());
+                };
+
+                payam.s.settings.$val = value;
+                payam.s.settings.set(&payam.s.ctx.db).await?;
+                payam.s.send_menu().await?;
+            }};
+        }
 
         if is_admin {
             match state {
                 State::AdminProxyAdd => payam.admin_proxy_add().await?,
                 State::AdminSetVipMsg => payam.admin_set_vip_msg().await?,
-                _ => {}
+                State::AdminSetVipCost => set_int!(vip_cost),
+                State::AdminSetProxyCost => set_int!(proxy_cost),
+                State::AdminSetV2rayCost => set_int!(v2ray_cost),
+                State::AdminSetInvitPt => set_int!(invite_points),
+                State::AdminSetDailyPt => set_int!(daily_points),
+                State::AdminFlyerSetMaxView(id) => {
+                    let Some(mv) = gn::<i64>(&payam.s, &payam.msg).await?
+                    else {
+                        return Ok(());
+                    };
+                    let mut flyer = Flyer::get(&payam.s.ctx, id).await?;
+                    flyer.max_views = mv.max(-1);
+                    flyer.set(&payam.s.ctx).await?;
+                }
+                State::AdminFlyerAdd => {
+                    let Some(label) = payam.msg.text() else {
+                        payam.s.notify("پیام شما هیچ متنی ندارد 🍌").await?;
+                        return Ok(());
+                    };
+                    let m = indoc::formatdoc!(
+                        "نام انتخابی شما: {label}
+                        
+                        پیام تبلیغ را ارسال کنید"
+                    );
+                    let sn = State::AdminFlyerSendMessage {
+                        label: label.to_string(),
+                    };
+                    payam.s.store.update(sn).await?;
+                    payam.s.notify(&m).await?;
+                }
+                State::AdminFlyerSendMessage { label } => {
+                    let dev = payam.s.conf.dev;
+                    let (cid, mid) = (payam.s.cid, payam.msg.id);
+                    let mid = payam.s.bot.copy_message(dev, cid, mid).await?;
+                    let mut flyer = Flyer::new(label, mid.0 as i64);
+                    flyer.add(&payam.s.ctx).await?;
+                    let m = concat!(
+                        "تبلیغ شما ثبت شد ✅\n\nحداکثر تعداد بازدید ",
+                        "را ارسال کنید و یا به منوی اصلی بروید"
+                    );
+                    let st = State::AdminFlyerSetMaxView(flyer.id);
+                    payam.s.store.update(st).await?;
+                    payam.s.notify(m).await?;
+                }
+                State::Menu | State::AdminFlyerList | State::AdminProxyList => {
+                }
             }
+        }
+
+        let Some(txt) = payam.msg.text() else {
+            return Ok(());
+        };
+
+        match txt {
+            keyboard::GET_VIP => payam.s.get_vip().await?,
+            keyboard::INVITE => payam.s.get_invite().await?,
+            keyboard::DAILY_PONT => payam.s.get_daily_point().await?,
+            keyboard::GET_V2RAY => payam.s.get_v2ray().await?,
+            keyboard::GET_PROXY => payam.s.get_proxy().await?,
+            keyboard::MENU => payam.s.send_menu().await?,
+            _ => {}
         }
 
         Ok(())
     }
 
     async fn admin_set_vip_msg(&mut self) -> HR {
-        let new_msg =
-            self.bot.copy_message(self.conf.dev, self.cid, self.msg.id).await?;
-        self.settings.vip_msg = Some(new_msg.0 as i64);
-        self.settings.set(&self.ctx.db).await?;
-        send_menu(&self.bot, &self.store, &self.karbar).await?;
+        let new_msg = self
+            .s
+            .bot
+            .copy_message(self.s.conf.dev, self.s.cid, self.msg.id)
+            .await?;
+        self.s.settings.vip_msg = Some(new_msg.0 as i64);
+        self.s.settings.set(&self.s.ctx.db).await?;
+        self.s.send_menu().await?;
         Ok(())
     }
 
@@ -78,21 +159,25 @@ impl Payam {
         'd: {
             let Some(doc) = self.msg.document() else { break 'd };
             if doc.file.size > 2 * 1024 * 1024 {
-                self.bot.send_message(self.cid, "max file size is 2MB").await?;
+                self.s
+                    .bot
+                    .send_message(self.s.cid, "max file size is 2MB")
+                    .await?;
                 break 'd;
             }
             let m = doc.mime_type.clone();
 
             if !m.map(|v| v.type_() == "text").unwrap_or_default() {
-                self.bot
-                    .send_message(self.cid, "only text files are allowed")
+                self.s
+                    .bot
+                    .send_message(self.s.cid, "only text files are allowed")
                     .await?;
                 break 'd;
             }
 
-            let f = self.bot.get_file(doc.file.id.clone()).await?;
+            let f = self.s.bot.get_file(doc.file.id.clone()).await?;
             let mut buf = Vec::with_capacity(f.size as usize);
-            self.bot.download_file(&f.path, &mut buf).await?;
+            self.s.bot.download_file(&f.path, &mut buf).await?;
             match String::from_utf8(buf.clone()) {
                 Ok(v) => data += &v,
                 Err(e) => {
@@ -112,13 +197,13 @@ impl Payam {
             }
 
             let Some(mut px) = Proxy::from_link(line) else { continue };
-            if px.add(&self.ctx).await.is_ok() {
+            if px.add(&self.s.ctx).await.is_ok() {
                 added += 1;
             }
         }
 
-        self.bot.send_message(
-            self.cid,
+        self.s.bot.send_message(
+            self.s.cid,
             format!(
                 "added {added} new proxies\n\nsend other proxies or go to menu"
             ),

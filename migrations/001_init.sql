@@ -41,7 +41,14 @@ create table if not exists proxy_votes (
     unique (karbar, proxy)
 );
 
-
+create table if not exists flyers (
+    id integer primary key not null,
+    label text not null,
+    mid integer not null,
+    views integer not null default 0,
+    max_views integer not null default -1,
+    disabled boolean not null default false
+);
 
 /*
 create table if not exists users (
