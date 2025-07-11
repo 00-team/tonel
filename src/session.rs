@@ -1,17 +1,19 @@
 use crate::{
     Ctx, HR, TB,
     config::Config,
-    db::{Flyer, Karbar, Proxy, Settings},
+    db::{Flyer, Karbar, Proxy, Settings, V2ray},
     state::{AdminGlobal as Ag, KeyData, State, Store, kd, keyboard},
 };
 use std::str::FromStr;
 use teloxide::{
     payloads::{CopyMessageSetters, SendMessageSetters},
     prelude::Requester,
+    sugar::request::RequestLinkPreviewExt,
     types::{
         ChatId, InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton,
-        KeyboardMarkup, MessageId,
+        KeyboardMarkup, MessageId, ParseMode,
     },
+    utils::html::escape,
 };
 
 pub struct Session {
@@ -50,6 +52,21 @@ impl Session {
         Ok(())
     }
 
+    pub async fn flyer_btn(&mut self) -> Option<InlineKeyboardButton> {
+        let Some(mut flyer) = Flyer::get_good_link(&self.ctx).await else {
+            return None;
+        };
+
+        let u = flyer.link.and_then(|v| reqwest::Url::from_str(&v).ok());
+        let Some(url) = u else {
+            flyer.link = None;
+            let _ = flyer.set(&self.ctx).await;
+            return None;
+        };
+
+        Some(InlineKeyboardButton::url(flyer.label, url))
+    }
+
     pub async fn get_vip(&mut self) -> HR {
         if self.karbar.points < self.settings.vip_cost {
             let m = indoc::indoc!(
@@ -72,11 +89,14 @@ impl Session {
         };
         let su = &self.conf.start_url;
         let mid = MessageId(msg as i32);
-        let kyb = [[
+        let mut kyb = vec![vec![
             InlineKeyboardButton::url("پروکسی رایگان", su.clone()),
             InlineKeyboardButton::url("v2ray رایگان", su.clone()),
             KeyData::donate_url(),
         ]];
+        if let Some(btn) = self.flyer_btn().await {
+            kyb.push(vec![btn]);
+        }
         self.bot
             .copy_message(self.cid, self.conf.dev, mid)
             .reply_markup(InlineKeyboardMarkup::new(kyb))
@@ -84,6 +104,9 @@ impl Session {
 
         self.karbar.points -= self.settings.vip_cost;
         self.karbar.set(&self.ctx).await?;
+
+        self.settings.vip_views += 1;
+        self.settings.set(&self.ctx.db).await?;
 
         Ok(())
     }
@@ -110,7 +133,7 @@ impl Session {
             break (px, purl);
         };
 
-        let kb = InlineKeyboardMarkup::new([
+        let mut kyb = vec![
             vec![InlineKeyboardButton::url("فعال سازی پروکسی 👘", purl)],
             vec![
                 InlineKeyboardButton::url(
@@ -119,7 +142,11 @@ impl Session {
                 ),
                 KeyData::donate_url(),
             ],
-        ]);
+        ];
+        if let Some(btn) = self.flyer_btn().await {
+            kyb.push(vec![btn]);
+        }
+        let kb = InlineKeyboardMarkup::new(kyb);
 
         let sent = 'a: {
             let Some(mut flyer) = Flyer::get_good(&self.ctx).await else {
@@ -143,10 +170,8 @@ impl Session {
         };
 
         if !sent {
-            self.bot
-                .send_message(self.cid, "هیچ تبلیغی پیدا نشد. پیام پیشفرض")
-                .reply_markup(kb)
-                .await?;
+            let m = "روی دکمه «فعال سازی پروکسی» کلیک کنید.👇";
+            self.bot.send_message(self.cid, m).reply_markup(kb).await?;
         }
 
         self.karbar.points -= self.settings.proxy_cost;
@@ -160,7 +185,7 @@ impl Session {
         self.bot
             .send_message(self.cid, "به این پروکسی رای دهید")
             .reply_markup(InlineKeyboardMarkup::new([
-                vec![
+                [
                     InlineKeyboardButton::callback(
                         "👍",
                         KeyData::ProxyVote(px.id, 1),
@@ -170,17 +195,93 @@ impl Session {
                         KeyData::ProxyVote(px.id, -1),
                     ),
                 ],
-                vec![KeyData::main_menu_btn()],
+                [KeyData::main_menu_btn(), KeyData::donate_btn()],
             ]))
             .await?;
 
         Ok(())
     }
 
-    pub async fn get_v2ray(&self) -> HR {
+    pub async fn get_v2ray(&mut self) -> HR {
+        if self.karbar.points < self.settings.v2ray_cost {
+            self.notify("شما امتیاز کافی برای دریافت v2ray ندارید 🐧").await?;
+            return Ok(());
+        }
+
+        let mut tries = 0u8;
+        let v2 = loop {
+            tries += 1;
+            if tries > 6 {
+                self.notify("هیچ کانفیگ v2ray یافت نشد 😥").await?;
+                return Ok(());
+            }
+            let Some(v2) = V2ray::get_good(&self.ctx).await else { continue };
+            break v2;
+        };
+
+        let mut kyb = vec![vec![
+            InlineKeyboardButton::url(
+                "دریافت پروکسی و v2ray رایگان 🍓",
+                self.conf.start_url.clone(),
+            ),
+            KeyData::donate_url(),
+        ]];
+        if let Some(btn) = self.flyer_btn().await {
+            kyb.push(vec![btn]);
+        }
+        let kb = InlineKeyboardMarkup::new(kyb);
+
+        let m = indoc::formatdoc!(
+            r#"<b>کانفیگ v2ray</b>
+
+            <code>{}</code>
+            
+            همه نت ها 
+            حجم 600 گیگ
+            
+            <a href="https://t.me/xixv2ray/40">آموزش وصل شدن</a>
+            
+            <a href="https://t.me/xixv2ray/44">برنامه برای اندروید</a>
+            
+            <a href="https://t.me/xixv2ray/43">برنامه برای آیفون</a>
+            
+            <a href="https://t.me/proxyxix">گروه پروکسی</a>
+            
+            «برای پایداری سرور ها به حمایت مالی شما نیاز داریم❤️»"#,
+            escape(&v2.link)
+        );
         self.bot
-            .send_message(self.cid, "send a v2ray")
-            .reply_markup(KeyData::main_menu())
+            .send_message(self.cid, m)
+            .parse_mode(ParseMode::Html)
+            .disable_link_preview(true)
+            .reply_markup(kb)
+            .await?;
+
+        self.karbar.points -= self.settings.v2ray_cost;
+        self.karbar.set(&self.ctx).await?;
+
+        let vote = V2ray::vote_get(&self.ctx, self.karbar.tid, v2.id).await;
+        if vote.is_some() {
+            return Ok(());
+        }
+
+        let kb = [
+            [
+                InlineKeyboardButton::callback(
+                    "👍",
+                    KeyData::V2rayVote(v2.id, 1),
+                ),
+                InlineKeyboardButton::callback(
+                    "👎",
+                    KeyData::V2rayVote(v2.id, -1),
+                ),
+            ],
+            [KeyData::main_menu_btn(), KeyData::donate_btn()],
+        ];
+
+        self.bot
+            .send_message(self.cid, "به این کانفیگ v2ray رای دهید")
+            .reply_markup(InlineKeyboardMarkup::new(kb))
             .await?;
 
         Ok(())
@@ -193,7 +294,18 @@ impl Session {
         );
         let rurl =
             reqwest::Url::from_str(&url).unwrap_or(self.conf.start_url.clone());
-        let msg = indoc::formatdoc!("your invite link: {url}",);
+        let msg = indoc::formatdoc!(
+            "🤖 ربات دریافت رایگان کانفیگ V2RAY و پروکسی
+            
+            🔹 کانفیگ‌های اختصاصی با پینگ تست‌شده ✅
+            🔹 پروکسی تلگرام پرسرعت 🟢
+            🔹 دسترسی به کانفیگ‌های VIP 👑
+            
+            
+            📥 دریافت از ربات:
+            🔗 {url}"
+        );
+
         let kyb = [[
             InlineKeyboardButton::url("پروکسی رایگان", rurl.clone()),
             InlineKeyboardButton::url("v2ray رایگان", rurl.clone()),
@@ -201,6 +313,7 @@ impl Session {
         ]];
         self.bot
             .send_message(self.cid, msg)
+            .disable_link_preview(true)
             .reply_markup(InlineKeyboardMarkup::new(kyb))
             .await?;
 
@@ -208,6 +321,39 @@ impl Session {
     }
 
     pub async fn get_daily_point(&mut self) -> HR {
+        let kb = InlineKeyboardMarkup::new([[InlineKeyboardButton::callback(
+            "دریافت امتیاز 🍅",
+            KeyData::GetRealDailyPoints,
+        )]]);
+        let sent = 'a: {
+            let Some(mut flyer) = Flyer::get_good(&self.ctx).await else {
+                break 'a false;
+            };
+            let m = MessageId(flyer.mid as i32);
+            let (d, c) = (self.conf.dev, self.cid);
+
+            let r = self.bot.copy_message(c, d, m).reply_markup(kb);
+
+            if r.await.is_err() {
+                flyer.disabled = true;
+                let _ = flyer.set(&self.ctx).await;
+                break 'a false;
+            }
+
+            flyer.views += 1;
+            let _ = flyer.set(&self.ctx).await;
+
+            true
+        };
+
+        if !sent {
+            self.get_real_daily_point().await?;
+        }
+
+        Ok(())
+    }
+
+    pub async fn get_real_daily_point(&mut self) -> HR {
         let rem = self.now - self.karbar.last_daily_point_at;
         if rem < Config::DAILY_POINTS_DELAY {
             let wait = Config::DAILY_POINTS_DELAY - rem;
@@ -250,10 +396,11 @@ impl Session {
 
     pub async fn send_menu(&self) -> HR {
         let menu_text = indoc::formatdoc!(
-            r#"«اینترنت آزاد حق همه مردمه»🌍
+            r#"🌍 «اینترنت آزاد حق همه مردمه» 
+
             🍅 امتیاز شما: {}
-            👥 با دعوت از دوستان و دریافت امتیاز روزانه، امتیاز بیشتری دریافت کن!
-        "#,
+
+            👥 با دعوت از دوستان و دریافت امتیاز روزانه، امتیاز بیشتری دریافت کن!"#,
             self.karbar.points,
         );
 
@@ -327,7 +474,7 @@ impl Session {
     }
 
     pub async fn send_welcome(&self) -> HR {
-        let msg = "«ما کانفیگ نمیفروشیم، اینترنت آزاد حق همه مردمه» 🍏🍌";
+        let msg = "آماده‌ی خدمات‌رسانی ۲۴ ساعته به شما هستیم! 🕒✨";
 
         let kkb = [
             vec![

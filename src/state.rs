@@ -17,7 +17,9 @@ pub enum KeyData {
     GetV2ray,
     MyInviteLinks,
     GetDailyPoints,
+    GetRealDailyPoints,
     ProxyVote(i64, i8),
+    V2rayVote(i64, i8),
     // admin global
     Ag(AdminGlobal),
 
@@ -46,24 +48,34 @@ pub enum AdminGlobal {
     KarbarBanToggle(i64),
     SendAll,
     SendAllConfirm(bool, i32),
-    ProxyList,
-    V2rayList,
     Settings,
+
+    ProxyList,
     ProxyDel(u32, i64),
     ProxyVotesReset(u32, i64),
     ProxyDisabledToggle(u32, i64),
+
+    V2rayList,
+    V2rayDel(u32, i64),
+    V2rayVotesReset(u32, i64),
+    V2rayDisabledToggle(u32, i64),
+
     SetDailyPt,
     SetInvitPt,
     SetProxyCost,
     SetV2rayCost,
     SetVipCost,
+    SetVipMaxViews,
     SetVipMsg,
     SetDonateMsg,
+
     FlyerList,
     FlyerDel(u32, i64),
     FlyerViewsReset(u32, i64),
     FlyerDisabledToggle(u32, i64),
     FlyerSetMaxViews(u32, i64),
+    FlyerSetLink(u32, i64),
+    FlyerDelLink(u32, i64),
 }
 
 macro_rules! kd {
@@ -131,12 +143,16 @@ pub enum State {
     AdminProxyList,
     AdminProxyAdd,
 
+    AdminV2rayList,
+    AdminV2rayAdd,
+
     AdminFlyerList,
     AdminFlyerAdd,
     AdminFlyerSendMessage {
         label: String,
     },
     AdminFlyerSetMaxView(i64),
+    AdminFlyerSetLink(i64),
 
     AdminSetDailyPt,
     AdminSetInvitPt,
@@ -144,6 +160,7 @@ pub enum State {
     AdminSetV2rayCost,
     AdminSetVipCost,
     AdminSetVipMsg,
+    AdminSetVipMaxViews,
     AdminSetDonateMsg,
 }
 

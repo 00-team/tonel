@@ -4,6 +4,8 @@ use crate::utils::now;
 use crate::{Ctx, utils};
 use teloxide::types::{ChatId, User, UserId};
 
+use super::Settings;
+
 #[derive(Debug, sqlx::FromRow, Clone)]
 pub struct Karbar {
     pub tid: i64,
@@ -49,7 +51,7 @@ impl Karbar {
         .flatten()
     }
 
-    pub async fn init(ctx: &Ctx, user: &User, r: &str) -> Result<Self, AppErr> {
+    pub async fn init(ctx: &Ctx, user: &User, c: &str) -> Result<Self, AppErr> {
         let tid = user.id.0 as i64;
         let fullname = user.full_name();
         let username = user.username.clone();
@@ -62,7 +64,7 @@ impl Karbar {
         .await?;
 
         let Some(mut karbar) = karbar else {
-            let _ = Self::invited(ctx, r).await;
+            let _ = Self::invited(ctx, c).await;
 
             let code = loop {
                 let code = utils::random_code();
@@ -166,8 +168,10 @@ impl Karbar {
         .await?;
 
         let Some(mut karbar) = karbar else { return Ok(()) };
+        log::info!("adding to : {}", karbar.fullname);
 
-        let added = { ctx.settings.lock().await.invite_points };
+        let added = Settings::get(&ctx.db).await.invite_points;
+
         karbar.points += added;
         karbar.set(ctx).await?;
 

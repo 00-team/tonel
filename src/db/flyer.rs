@@ -7,6 +7,7 @@ use crate::{Ctx, book::BookItem, error::AppErr};
 pub struct Flyer {
     pub id: i64,
     pub label: String,
+    pub link: Option<String>,
     pub mid: i64,
     pub views: i64,
     pub max_views: i64,
@@ -18,6 +19,7 @@ impl Default for Flyer {
         Self {
             id: 0,
             label: String::new(),
+            link: None,
             mid: 0,
             views: 0,
             max_views: -1,
@@ -74,7 +76,21 @@ impl Flyer {
             Self,
             "select * from flyers
             where NOT (disabled OR (max_views > -1 AND views >= max_views))
-            limit 1"
+            order by random() limit 1"
+        )
+        .fetch_optional(&ctx.db)
+        .await
+        .ok()
+        .flatten()
+    }
+
+    pub async fn get_good_link(ctx: &Ctx) -> Option<Self> {
+        sqlx::query_as!(
+            Self,
+            "select * from flyers
+            where link is not NULL AND
+            NOT (disabled OR (max_views > -1 AND views >= max_views))
+            order by random() limit 1"
         )
         .fetch_optional(&ctx.db)
         .await
@@ -98,10 +114,12 @@ impl Flyer {
             "update flyers set
             disabled = ?,
             views = ?,
+            link = ?,
             max_views = ?
             where id = ?",
             self.disabled,
             self.views,
+            self.link,
             self.max_views,
             self.id
         )

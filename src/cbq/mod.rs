@@ -2,7 +2,7 @@ use crate::{
     Ctx, HR, TB,
     book::Book,
     config::Config,
-    db::{Flyer, Karbar, KarbarStats, Proxy, Settings},
+    db::{Flyer, Karbar, KarbarStats, Proxy, Settings, V2ray},
     error::AppErr,
     session::Session,
     state::{AdminGlobal as Ag, KeyData, State, Store, kd},
@@ -18,6 +18,7 @@ use teloxide::{
 
 mod flyer;
 mod proxy;
+mod v2ray;
 
 pub struct Cbq {
     key: KeyData,
@@ -40,9 +41,29 @@ impl Cbq {
             KeyData::GetV2ray => self.s.get_v2ray().await?,
             KeyData::MyInviteLinks => self.s.get_invite().await?,
             KeyData::GetDailyPoints => self.s.get_daily_point().await?,
+            KeyData::GetRealDailyPoints => {
+                self.s.get_real_daily_point().await?
+            }
             KeyData::ProxyVote(id, vote) => {
+                self.del_msg().await?;
                 let kid = self.s.karbar.tid;
                 let vr = Proxy::vote_add(&self.s.ctx, kid, id, vote).await;
+                let msg = if vr.is_ok() {
+                    "رای شما ثبت شد 🍌"
+                } else {
+                    "شما قبلا رای داده بودید 🍏"
+                };
+
+                self.s
+                    .bot
+                    .send_message(self.s.cid, msg)
+                    .reply_markup(KeyData::main_menu())
+                    .await?;
+            }
+            KeyData::V2rayVote(id, vote) => {
+                self.del_msg().await?;
+                let kid = self.s.karbar.tid;
+                let vr = V2ray::vote_add(&self.s.ctx, kid, id, vote).await;
                 let msg = if vr.is_ok() {
                     "رای شما ثبت شد 🍌"
                 } else {
@@ -107,7 +128,7 @@ impl Cbq {
             Ag::KarbarSetPoints(kid) => {
                 self.s.store.update(State::AdminKarbarSetPoints(kid)).await?;
                 self.s.notify("تعداد امتیاز را به صورت عدد ارسال کنید").await?;
-            },
+            }
             Ag::SendAll => {
                 let stats = KarbarStats::get(&self.s.ctx).await;
                 let stats = stats.unwrap_or_default();
@@ -131,9 +152,7 @@ impl Cbq {
             }
             Ag::ProxyList => self.admin_proxy_list(0).await?,
             Ag::FlyerList => self.admin_flyer_list(0).await?,
-            Ag::V2rayList => {
-                self.s.bot.send_message(self.s.cid, "admin v2ray list").await?;
-            }
+            Ag::V2rayList => self.admin_v2ray_list(0).await?,
             Ag::Settings => {
                 let s = &self.s.settings;
 
@@ -161,16 +180,18 @@ impl Cbq {
                 ];
                 let kyb3 = [
                     sbtn!(SetDonateMsg, "پیام حمایت مالی"),
-                    KeyData::main_menu_btn(),
+                    sbtn!(SetVipMaxViews, "بازدید VIP: {}", vip_max_views),
                     KeyData::main_menu_btn(),
                 ];
                 let kb = InlineKeyboardMarkup::new([kyb1, kyb2, kyb3]);
 
-                self.s
-                    .bot
-                    .send_message(self.s.cid, "تنظیمات ⚙️")
-                    .reply_markup(kb)
-                    .await?;
+                let m = indoc::formatdoc!(
+                    "تنظیمات ⚙️
+                
+                    بازدید از VIP: {}",
+                    self.s.settings.vip_views
+                );
+                self.s.bot.send_message(self.s.cid, m).reply_markup(kb).await?;
             }
             Ag::ProxyDel(page, id) => {
                 Proxy::del(&self.s.ctx, id).await?;
@@ -184,6 +205,18 @@ impl Cbq {
                 Proxy::votes_reset(&self.s.ctx, id).await?;
                 self.admin_proxy_list(page).await?;
             }
+            Ag::V2rayDel(page, id) => {
+                V2ray::del(&self.s.ctx, id).await?;
+                self.admin_v2ray_list(page).await?;
+            }
+            Ag::V2rayDisabledToggle(page, id) => {
+                V2ray::disabled_toggle(&self.s.ctx, id).await?;
+                self.admin_v2ray_list(page).await?;
+            }
+            Ag::V2rayVotesReset(page, id) => {
+                V2ray::votes_reset(&self.s.ctx, id).await?;
+                self.admin_v2ray_list(page).await?;
+            }
             Ag::FlyerSetMaxViews(_page, id) => {
                 let msg = concat!(
                     "حداکثر تعداد بازدید را به صورت عدد ارسال کنید\n",
@@ -191,6 +224,20 @@ impl Cbq {
                 );
                 self.s.notify(msg).await?;
                 self.s.store.update(State::AdminFlyerSetMaxView(id)).await?;
+            }
+            Ag::FlyerSetLink(_page, id) => {
+                let msg = "لینک تبلیغ را ارسال کنید 🔗";
+                self.s.notify(msg).await?;
+                self.s.store.update(State::AdminFlyerSetLink(id)).await?;
+            }
+            Ag::FlyerDelLink(page, id) => {
+                let mut flyer = Flyer::get(&self.s.ctx, id).await?;
+                flyer.link = None;
+                flyer.set(&self.s.ctx).await?;
+
+                let msg = "لینک تبلیغ حذف شد 🍌";
+                self.s.notify(msg).await?;
+                self.admin_flyer_list(page).await?;
             }
             Ag::FlyerDel(page, id) => {
                 Flyer::del(&self.s.ctx, id).await?;
@@ -207,6 +254,16 @@ impl Cbq {
                 flyer.views = 0;
                 flyer.set(&self.s.ctx).await?;
                 self.admin_flyer_list(page).await?;
+            }
+            Ag::SetVipMaxViews => {
+                let msg = indoc::formatdoc!(
+                    "حداکثر بازدید پیام VIP: {}
+                    
+                    مقدار -1 به معنا بینهایت می باشد ♾️
+                    مقدار جدید را به صورت عدد ارسال کنید:",
+                    self.s.settings.vip_cost
+                );
+                self.set_settings(msg, State::AdminSetVipMaxViews).await?;
             }
             Ag::SetVipCost => {
                 let msg = indoc::formatdoc!(
@@ -302,6 +359,9 @@ impl Cbq {
                         let Ok(ks) = Karbar::sa_list(&ctx, page).await else {
                             break;
                         };
+                        if ks.is_empty() {
+                            break;
+                        }
 
                         for mut k in ks {
                             let is_err = if df {
@@ -322,9 +382,18 @@ impl Cbq {
                             }
                         }
 
+                        let m = format!(
+                            "🔔 پیام همگانی به {count} کاربر تاکنون ارسال شد ✅"
+                        );
+                        let _ = bot
+                            .send_message(bcid, m)
+                            .reply_markup(KeyData::main_menu())
+                            .await;
                         tokio::time::sleep(Config::SEND_ALL_SLEEP).await;
                         page += 1;
                     }
+
+                    log::info!("end of loop");
 
                     let m = format!("پیام همگانی به {count} کاربر ارسال شد ✅");
                     let _ = bot
@@ -374,6 +443,11 @@ impl Cbq {
             match state {
                 State::AdminProxyList => {
                     if cbq.handle_admin_proxy().await? {
+                        return Ok(());
+                    }
+                }
+                State::AdminV2rayList => {
+                    if cbq.handle_admin_v2ray().await? {
                         return Ok(());
                     }
                 }

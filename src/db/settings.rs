@@ -11,6 +11,8 @@ pub struct Settings {
     pub proxy_cost: i64,
     pub v2ray_cost: i64,
     pub vip_cost: i64,
+    pub vip_views: i64,
+    pub vip_max_views: i64,
     pub vip_msg: Option<i64>,
     pub donate_msg: Option<i64>,
 }
@@ -25,6 +27,8 @@ impl Default for Settings {
             v2ray_cost: 100,
             vip_cost: 200,
             vip_msg: None,
+            vip_views: 0,
+            vip_max_views: 100,
             donate_msg: None,
         }
     }
@@ -46,7 +50,12 @@ impl Settings {
         settings
     }
 
-    pub async fn set(&self, pool: &SqlitePool) -> Result<(), AppErr> {
+    pub async fn set(&mut self, pool: &SqlitePool) -> Result<(), AppErr> {
+        if self.vip_max_views > -1 && self.vip_views > self.vip_max_views {
+            self.vip_msg = None;
+            self.vip_views = 0;
+        }
+
         let old = sqlx::query_as! {
             Settings, "select * from settings where id = 1"
         }
@@ -68,6 +77,8 @@ impl Settings {
             v2ray_cost = ?,
             vip_cost = ?,
             vip_msg = ?,
+            vip_views = ?,
+            vip_max_views = ?,
             donate_msg = ?
             where id = 1
         ",
@@ -77,6 +88,8 @@ impl Settings {
             self.v2ray_cost,
             self.vip_cost,
             self.vip_msg,
+            self.vip_views,
+            self.vip_max_views,
             self.donate_msg,
         }
         .execute(pool)

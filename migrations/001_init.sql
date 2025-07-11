@@ -19,6 +19,8 @@ create table if not exists settings (
     proxy_cost integer not null default 100,
     v2ray_cost integer not null default 100,
     vip_cost integer not null default 200,
+    vip_views integer not null default 0,
+    vip_max_views integer not null default 100,
     vip_msg integer,
     donate_msg integer
 );
@@ -43,64 +45,37 @@ create table if not exists proxy_votes (
     unique (karbar, proxy)
 );
 
+create table if not exists v2rays (
+    id integer primary key not null,
+    label text not null,
+    link text not null unique,
+    up_votes integer not null default 0,
+    dn_votes integer not null default 0,
+    disabled boolean not null default false
+);
+
+create table if not exists v2rays_votes (
+    id integer primary key not null,
+    kind integer not null,
+    karbar integer not null references karbars(tid) on delete cascade,
+    v2ray integer not null references v2rays(id) on delete cascade,
+    unique (karbar, v2ray)
+);
+
+create table if not exists channels (
+    id integer primary key not null,
+    name text not null,
+    amount integer not null default 0,
+    max_sub integer not null default -1,
+    enabled boolean not null default false
+);
+
 create table if not exists flyers (
     id integer primary key not null,
     label text not null,
+    link text,
     mid integer not null,
     views integer not null default 0,
     max_views integer not null default -1,
     disabled boolean not null default false
 );
-
-/*
-create table if not exists users (
-    id integer primary key not null,
-    name text,
-    phone text not null,
-    token text,
-    photo text,
-    --                           32 u8
-    admin blob not null default x'0000000000000000000000000000000000000000000000000000000000000000',
-    banned boolean not null default false
-);
-
-create table if not exists product_tags (
-    id integer primary key not null,
-    name text not null,
-    kind integer not null,
-    part integer not null,
-    count integer not null default 0
-);
-
-create table if not exists products (
-    id integer primary key not null,
-    slug text not null unique,
-    kind integer not null,
-    name text not null,
-    code text unique not null,
-    detail text not null default "",
-    created_at integer not null,
-    updated_at integer not null default 0,
-    thumbnail text,
-    photos text not null default "[]",
-    tag_leg integer references product_tags(id) on delete set null,
-    tag_bed integer references product_tags(id) on delete set null,
-    best boolean not null default false,
-    description text not null default "",
-    specification text not null default "{}",
-    price integer not null default 0,
-    count integer not null default 0
-);
-
-create table if not exists materials (
-    id integer primary key not null,
-    name text not null,
-    detail text not null default "",
-    created_at integer not null,
-    updated_at integer not null default 0,
-    updated_by integer references users(id) on delete set null,
-    created_by integer references users(id) on delete set null,
-    photo text,
-    count integer not null default 0
-);
-*/

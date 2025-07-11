@@ -12,7 +12,7 @@ use teloxide::dispatching::dialogue::ErasedStorage;
 use teloxide::error_handlers::ErrorHandler;
 use teloxide::prelude::*;
 use teloxide::utils::command::BotCommands;
-use tokio::sync::Mutex;
+// use tokio::sync::Mutex;
 
 mod book;
 mod cbq;
@@ -31,7 +31,7 @@ type TB = Throttle<Bot>;
 #[derive(Debug, Clone)]
 pub struct Ctx {
     pub db: SqlitePool,
-    pub settings: Arc<Mutex<Settings>>,
+    // pub settings: Arc<Mutex<Settings>>,
 }
 
 #[tokio::main]
@@ -47,8 +47,8 @@ async fn main() -> Result<(), AppErr> {
 
     let storage = Config::init_storage().await;
     let db = Config::init_db().await;
-    let settings = Arc::new(Mutex::new(Settings::get(&db).await));
-    let ctx = Ctx { settings, db };
+    // let settings = Arc::new(Mutex::new(Settings::get(&db).await));
+    let ctx = Ctx { db };
 
     let handler = dptree::entry()
         .branch(
@@ -118,6 +118,7 @@ pub async fn handle_commands(
             let key = it.next().unwrap_or_default();
             let val = it.next().unwrap_or_default();
             let code = if key == "inv" { val } else { "" };
+            log::info!("code: {code}");
             let karbar = Karbar::init(&ctx, &user, code).await?;
             let s = Session {
                 cid: msg.chat.id,

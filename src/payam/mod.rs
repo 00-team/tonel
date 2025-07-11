@@ -1,7 +1,7 @@
 use crate::{
     Ctx, HR, TB,
     config::Config,
-    db::{Flyer, Karbar, Proxy, Settings},
+    db::{Flyer, Karbar, Proxy, Settings, V2ray},
     error::AppErr,
     session::Session,
     state::{AdminGlobal as Ag, KeyData, State, Store, kd, keyboard},
@@ -87,6 +87,7 @@ impl Payam {
         }
         match &self.state {
             State::AdminProxyAdd => self.admin_proxy_add().await?,
+            State::AdminV2rayAdd => self.admin_v2ray_add().await?,
             State::AdminSetVipMsg => self.admin_set_vip_msg().await?,
             State::AdminSetDonateMsg => self.admin_set_donate_msg().await?,
             State::AdminFindKarbar => self.admin_find_karbar().await?,
@@ -95,6 +96,7 @@ impl Payam {
             State::AdminSetV2rayCost => set_int!(v2ray_cost),
             State::AdminSetInvitPt => set_int!(invite_points),
             State::AdminSetDailyPt => set_int!(daily_points),
+            State::AdminSetVipMaxViews => set_int!(vip_max_views),
             State::AdminKarbarSetPoints(kid) => {
                 let Some(mv) = self.gn::<i64>().await? else {
                     return Ok(true);
@@ -117,6 +119,22 @@ impl Payam {
                 flyer.max_views = mv.max(-1);
                 flyer.set(&self.s.ctx).await?;
                 self.s.notify("حداکثر بازدید ثبت شد ✅").await?;
+                self.s.store.update(State::Menu).await?;
+            }
+            State::AdminFlyerSetLink(id) => {
+                let Some(txt) = self.msg.text() else {
+                    self.s.notify("پیام متنی ندارد ❌").await?;
+                    return Ok(true);
+                };
+                let Ok(url) = reqwest::Url::from_str(txt) else {
+                    self.s.notify("لینک شما اشتباه است ❌").await?;
+                    return Ok(true);
+                };
+                let mut flyer = Flyer::get(&self.s.ctx, *id).await?;
+                flyer.link = Some(url.to_string());
+                flyer.set(&self.s.ctx).await?;
+                self.s.notify("لینک ثبت شد ✅").await?;
+                self.s.store.update(State::Menu).await?;
             }
             State::AdminFlyerAdd => {
                 let Some(label) = self.msg.text() else {
@@ -169,7 +187,10 @@ impl Payam {
                     ]]))
                     .await?;
             }
-            State::Menu | State::AdminFlyerList | State::AdminProxyList => {
+            State::Menu
+            | State::AdminFlyerList
+            | State::AdminProxyList
+            | State::AdminV2rayList => {
                 return Ok(false);
             }
         }
@@ -247,7 +268,7 @@ impl Payam {
         Ok(())
     }
 
-    async fn admin_proxy_add(&self) -> HR {
+    async fn get_full_text(&self) -> Result<String, AppErr> {
         let mut data =
             self.msg.text().map(|v| v.to_string()).unwrap_or_default();
 
@@ -284,6 +305,11 @@ impl Payam {
             }
         };
 
+        Ok(data)
+    }
+
+    async fn admin_proxy_add(&self) -> HR {
+        let data = self.get_full_text().await?;
         let mut added = 0;
 
         for line in data.split('\n') {
@@ -297,14 +323,46 @@ impl Payam {
             }
         }
 
-        self.s.bot.send_message(
-            self.s.cid,
-            format!(
-                "added {added} new proxies\n\nsend other proxies or go to menu"
-            ),
-        )
-        .reply_markup(KeyData::main_menu())
-        .await?;
+        let m = indoc::formatdoc!(
+            "{added} پروکسی اضافه شد ✅
+
+            کانفیگ های دیگر را ارسال کنید یه به منوی اصلی بروید"
+        );
+        self.s
+            .bot
+            .send_message(self.s.cid, m)
+            .reply_markup(KeyData::main_menu())
+            .await?;
+
+        Ok(())
+    }
+
+    async fn admin_v2ray_add(&self) -> HR {
+        let data = self.get_full_text().await?;
+
+        let mut added = 0;
+
+        for line in data.split('\n') {
+            if line.is_empty() {
+                continue;
+            }
+
+            let Some(mut v2) = V2ray::from_link(line) else { continue };
+            if v2.add(&self.s.ctx).await.is_ok() {
+                added += 1;
+            }
+        }
+
+        let m = indoc::formatdoc!(
+            "{added} کانفیگ v2ray اضافه شد ✅
+
+            کانفیگ های دیگر را ارسال کنید یه به منوی اصلی بروید"
+        );
+        self.s
+            .bot
+            .send_message(self.s.cid, m)
+            .reply_markup(KeyData::main_menu())
+            .await?;
 
         Ok(())
     }

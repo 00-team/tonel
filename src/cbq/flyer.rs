@@ -1,3 +1,5 @@
+use teloxide::sugar::request::RequestLinkPreviewExt;
+
 use super::*;
 
 impl super::Cbq {
@@ -25,8 +27,12 @@ impl super::Cbq {
     pub async fn handle_admin_flyer(&self) -> Result<bool, AppErr> {
         match self.key {
             KeyData::BookAdd => {
-                self.s.notify("ابتدا نام تبلیغ را ارسال کنید\nفقط برای نمایش به ادمین ها").await?;
+                let m = concat!(
+                    "ابتدا نام تبلیغ را ارسال کنید\n\n",
+                    "این نام برای دکمه لینک تبلیغ استفاده می شود"
+                );
                 self.s.store.update(State::AdminFlyerAdd).await?;
+                self.s.notify(m).await?;
             }
             KeyData::BookItem(page, id) => {
                 let flyer = Flyer::get(&self.s.ctx, id).await?;
@@ -34,14 +40,16 @@ impl super::Cbq {
                     r#"{} 👆👆👆
                     بازدید: {}
                     حداکثر بازدید: {}
-                    فعال: {}"#,
+                    فعال: {}
+                    link: {}"#,
                     flyer.label,
                     flyer.views,
                     flyer.max_views,
                     if flyer.disabled { "❌" } else { "✅" },
+                    flyer.link.as_ref().map(|v| v.as_str()).unwrap_or("---")
                 );
 
-                let kyb1 = [
+                let kyb1 = vec![
                     InlineKeyboardButton::callback(
                         if flyer.disabled {
                             "فعال کن"
@@ -60,17 +68,32 @@ impl super::Cbq {
                     ),
                 ];
 
-                let kyb2 = [
+                let mut kyb2 = vec![InlineKeyboardButton::callback(
+                    "max views 🐝",
+                    kd!(ag, Ag::FlyerSetMaxViews(page, flyer.id)),
+                )];
+
+                if flyer.link.is_some() {
+                    kyb2.push(InlineKeyboardButton::callback(
+                        "حذف لینک ⭕",
+                        kd!(ag, Ag::FlyerDelLink(page, flyer.id)),
+                    ));
+                } else {
+                    kyb2.push(InlineKeyboardButton::callback(
+                        "ثبت لینک 🔗",
+                        kd!(ag, Ag::FlyerSetLink(page, flyer.id)),
+                    ));
+                }
+
+                let kyb3 = vec![
                     InlineKeyboardButton::callback(
                         "بازگشت ⬅️",
                         KeyData::BookPagination(page),
                     ),
-                    InlineKeyboardButton::callback(
-                        "max views 🐝",
-                        kd!(ag, Ag::FlyerSetMaxViews(page, flyer.id)),
-                    ),
                     KeyData::main_menu_btn(),
                 ];
+
+                let kb = InlineKeyboardMarkup::new([kyb1, kyb2, kyb3]);
 
                 let (cid, dev) = (self.s.cid, self.s.conf.dev);
                 let mid = MessageId(flyer.mid as i32);
@@ -78,7 +101,8 @@ impl super::Cbq {
                 self.s
                     .bot
                     .send_message(cid, msg)
-                    .reply_markup(InlineKeyboardMarkup::new([kyb1, kyb2]))
+                    .reply_markup(kb)
+                    .disable_link_preview(true)
                     .await?;
             }
             KeyData::BookPagination(page) => {
