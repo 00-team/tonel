@@ -53,7 +53,7 @@ impl Session {
         self.bot
             .send_message(
                 self.conf.channel,
-                "برای پروکسی ها بیشتر به بات مراجعه کنید",
+                "🌱 New active Proxy !!!\n\n| 🍓 @xixv2ray",
             )
             .reply_markup(kb)
             .await?;
