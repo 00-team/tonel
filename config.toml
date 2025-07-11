@@ -4,6 +4,7 @@ dev = 123456789_your_id
 token = "<your bot token>"
 storage = "tonel.tx.db"
 username = "<your bot username without @>"
+channel = -12449322_your_channel_id
 
 [db]
 path = "tonel.main.db"

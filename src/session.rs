@@ -28,6 +28,39 @@ pub struct Session {
 }
 
 impl Session {
+    pub async fn ch_send(&mut self) -> HR {
+        if self.settings.ch_last_sent + 3600 > self.now {
+            return Ok(());
+        }
+        self.settings.ch_last_sent = self.now;
+        self.settings.set(&self.ctx.db).await?;
+        let su = &self.conf.start_url;
+
+        let pxs = Proxy::ch_list(&self.ctx).await?;
+        let mut kyb1 = Vec::with_capacity(4);
+        for px in pxs.iter() {
+            let Ok(url) = reqwest::Url::from_str(&px.url()) else { continue };
+            kyb1.push(InlineKeyboardButton::url("اتصال", url));
+        }
+
+        let kyb2 = vec![
+            InlineKeyboardButton::url("پروکسی رایگان", su.clone()),
+            InlineKeyboardButton::url("v2ray رایگان", su.clone()),
+            KeyData::donate_url(),
+        ];
+
+        let kb = InlineKeyboardMarkup::new([kyb1, kyb2]);
+        self.bot
+            .send_message(
+                self.conf.channel,
+                "برای پروکسی ها بیشتر به بات مراجعه کنید",
+            )
+            .reply_markup(kb)
+            .await?;
+
+        Ok(())
+    }
+
     pub async fn notify(&self, text: &str) -> HR {
         self.bot
             .send_message(self.cid, text)
@@ -402,11 +435,9 @@ impl Session {
             r#"🌍 «اینترنت آزاد حق همه مردمه» 
 
             🍅 امتیاز شما: {}
-            stack: {}
 
             👥 با دعوت از دوستان و دریافت امتیاز روزانه، امتیاز بیشتری دریافت کن!"#,
             self.karbar.points,
-            self.karbar.price_stack
         );
 
         let mut ikb = vec![
@@ -495,7 +526,7 @@ impl Session {
             vec![KeyboardButton::new(keyboard::DONATE)],
         ];
 
-        let kyb = KeyboardMarkup::new(kkb).persistent();
+        let kyb = KeyboardMarkup::new(kkb).resize_keyboard();
 
         self.bot.send_message(self.cid, msg).reply_markup(kyb).await?;
 

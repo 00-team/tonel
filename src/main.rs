@@ -122,9 +122,8 @@ pub async fn handle_commands(
             let key = it.next().unwrap_or_default();
             let val = it.next().unwrap_or_default();
             let code = if key == "inv" { val } else { "" };
-            log::info!("code: {code}");
             let karbar = Karbar::init(&ctx, &user, code).await?;
-            let s = Session {
+            let mut s = Session {
                 cid: msg.chat.id,
                 settings: Settings::get(&ctx.db).await,
                 ctx,
@@ -135,6 +134,7 @@ pub async fn handle_commands(
                 store,
             };
 
+            s.ch_send().await?;
             s.send_welcome().await?;
 
             match key {
@@ -144,7 +144,7 @@ pub async fn handle_commands(
         }
         TonelCommand::Menu => {
             let karbar = Karbar::init(&ctx, &user, "").await?;
-            let s = Session {
+            let mut s = Session {
                 cid: msg.chat.id,
                 settings: Settings::get(&ctx.db).await,
                 ctx,
@@ -154,6 +154,7 @@ pub async fn handle_commands(
                 bot,
                 store,
             };
+            s.ch_send().await?;
             s.send_menu().await?;
         }
         TonelCommand::Help => {

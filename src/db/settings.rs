@@ -15,6 +15,7 @@ pub struct Settings {
     pub vip_max_views: i64,
     pub vip_msg: Option<i64>,
     pub donate_msg: Option<i64>,
+    pub ch_last_sent: i64,
 }
 
 impl Default for Settings {
@@ -30,6 +31,7 @@ impl Default for Settings {
             vip_views: 0,
             vip_max_views: 100,
             donate_msg: None,
+            ch_last_sent: 0,
         }
     }
 }
@@ -79,7 +81,8 @@ impl Settings {
             vip_msg = ?,
             vip_views = ?,
             vip_max_views = ?,
-            donate_msg = ?
+            donate_msg = ?,
+            ch_last_sent = ?
             where id = 1
         ",
             self.invite_points,
@@ -91,6 +94,7 @@ impl Settings {
             self.vip_views,
             self.vip_max_views,
             self.donate_msg,
+            self.ch_last_sent,
         }
         .execute(pool)
         .await?;

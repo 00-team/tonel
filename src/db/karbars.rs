@@ -201,7 +201,6 @@ impl Karbar {
         .await?;
 
         let Some(mut karbar) = karbar else { return Ok(()) };
-        log::info!("adding to : {}", karbar.fullname);
 
         let added = Settings::get(&ctx.db).await.invite_points;
 

@@ -429,6 +429,8 @@ impl Cbq {
             s: Session { bot, settings, cid, karbar, ctx, conf, now, store },
         };
 
+        cbq.s.ch_send().await?;
+
         if cbq.handle_global().await? {
             return Ok(());
         }

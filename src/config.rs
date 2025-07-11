@@ -9,8 +9,7 @@ use std::{
     time::Duration,
 };
 use teloxide::{
-    Bot, dispatching::dialogue::ErasedStorage, net::default_reqwest_settings,
-    prelude::RequesterExt, types::UserId,
+    dispatching::dialogue::ErasedStorage, net::default_reqwest_settings, prelude::RequesterExt, types::{ChatId, UserId}, Bot
 };
 
 use crate::state::State;
@@ -25,6 +24,7 @@ mod config_toml {
         pub dev: u64,
         pub storage: String,
         pub username: String,
+        pub channel: i64,
     }
 
     #[derive(Debug, serde::Deserialize)]
@@ -77,6 +77,7 @@ pub struct Config {
     pub donate_url: reqwest::Url,
     /// without @
     pub bot_username: String,
+    pub channel: ChatId
 }
 
 impl Config {
@@ -104,6 +105,7 @@ impl Config {
             bot_username: ct.bot.username,
             start_url,
             donate_url,
+            channel: ChatId(ct.bot.channel)
         }
     }
 

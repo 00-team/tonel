@@ -37,6 +37,8 @@ impl Payam {
             msg,
         };
 
+        payam.s.ch_send().await?;
+
         if is_admin && payam.handle_admin().await? {
             return Ok(());
         }

@@ -80,6 +80,17 @@ impl Proxy {
         .await?)
     }
 
+    pub async fn ch_list(ctx: &Ctx) -> Result<Vec<Proxy>, AppErr> {
+        let res = sqlx::query_as!(
+            Self,
+            "select * from proxies order by RANDOM() limit 4",
+        )
+        .fetch_all(&ctx.db)
+        .await?;
+
+        Ok(res)
+    }
+
     pub async fn count(ctx: &Ctx) -> Result<u32, AppErr> {
         let count = sqlx::query!("select COUNT(1) as count from proxies")
             .fetch_one(&ctx.db)

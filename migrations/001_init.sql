@@ -24,7 +24,8 @@ create table if not exists settings (
     vip_views integer not null default 0,
     vip_max_views integer not null default 100,
     vip_msg integer,
-    donate_msg integer
+    donate_msg integer,
+    ch_last_sent integer not null default 0
 );
 insert into settings(id) values(1);
 
