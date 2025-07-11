@@ -1,6 +1,6 @@
 use config::Config;
 use db::{Karbar, Settings};
-use error::AppErr;
+use error::{AppErr, Worm};
 use session::Session;
 use sqlx::SqlitePool;
 use state::{State, Store};
@@ -86,8 +86,12 @@ struct SendDevErrorHandler {
 
 type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 
-impl<E: Debug> ErrorHandler<E> for SendDevErrorHandler {
-    fn handle_error(self: Arc<Self>, error: E) -> BoxFuture<'static, ()> {
+impl ErrorHandler<AppErr> for SendDevErrorHandler {
+    fn handle_error(self: Arc<Self>, error: AppErr) -> BoxFuture<'static, ()> {
+        if let Worm::Banned = error.worm {
+            return Box::pin(async {});
+        }
+
         let msg = format!("error: {error:#?}");
         let bot = self.bot.clone();
         Box::pin(async move {

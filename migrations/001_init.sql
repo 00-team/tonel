@@ -9,7 +9,9 @@ create table if not exists karbars (
     points integer not null default 0,
     last_daily_point_at integer not null default 0,
     invite_code text not null unique,
-    blocked boolean not null default false
+    blocked boolean not null default false,
+    last_request integer not null default 0,
+    price_stack integer not null default 0
 );
 
 create table if not exists settings (

@@ -68,7 +68,8 @@ impl Session {
     }
 
     pub async fn get_vip(&mut self) -> HR {
-        if self.karbar.points < self.settings.vip_cost {
+        let cost = self.karbar.calc_cost(self.settings.vip_cost);
+        if self.karbar.points < cost {
             let m = indoc::indoc!(
                 "❌ شما امتیاز کافی برای دریافت کانفیگ VIP ندارید.
 
@@ -102,7 +103,7 @@ impl Session {
             .reply_markup(InlineKeyboardMarkup::new(kyb))
             .await?;
 
-        self.karbar.points -= self.settings.vip_cost;
+        self.karbar.points -= cost;
         self.karbar.set(&self.ctx).await?;
 
         self.settings.vip_views += 1;
@@ -112,7 +113,8 @@ impl Session {
     }
 
     pub async fn get_proxy(&mut self) -> HR {
-        if self.karbar.points < self.settings.proxy_cost {
+        let cost = self.karbar.calc_cost(self.settings.proxy_cost);
+        if self.karbar.points < cost {
             self.notify("شما امتیاز کافی برای دریافت پروکسی ندارید 🐧").await?;
             return Ok(());
         }
@@ -174,7 +176,7 @@ impl Session {
             self.bot.send_message(self.cid, m).reply_markup(kb).await?;
         }
 
-        self.karbar.points -= self.settings.proxy_cost;
+        self.karbar.points -= cost;
         self.karbar.set(&self.ctx).await?;
 
         let vote = Proxy::vote_get(&self.ctx, self.karbar.tid, px.id).await;
@@ -203,7 +205,8 @@ impl Session {
     }
 
     pub async fn get_v2ray(&mut self) -> HR {
-        if self.karbar.points < self.settings.v2ray_cost {
+        let cost = self.karbar.calc_cost(self.settings.v2ray_cost);
+        if self.karbar.points < cost {
             self.notify("شما امتیاز کافی برای دریافت v2ray ندارید 🐧").await?;
             return Ok(());
         }
@@ -257,7 +260,7 @@ impl Session {
             .reply_markup(kb)
             .await?;
 
-        self.karbar.points -= self.settings.v2ray_cost;
+        self.karbar.points -= cost;
         self.karbar.set(&self.ctx).await?;
 
         let vote = V2ray::vote_get(&self.ctx, self.karbar.tid, v2.id).await;
@@ -399,9 +402,11 @@ impl Session {
             r#"🌍 «اینترنت آزاد حق همه مردمه» 
 
             🍅 امتیاز شما: {}
+            stack: {}
 
             👥 با دعوت از دوستان و دریافت امتیاز روزانه، امتیاز بیشتری دریافت کن!"#,
             self.karbar.points,
+            self.karbar.price_stack
         );
 
         let mut ikb = vec![

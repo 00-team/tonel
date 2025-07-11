@@ -19,6 +19,8 @@ pub struct Karbar {
     pub last_daily_point_at: i64,
     pub invite_code: String,
     pub blocked: bool,
+    pub last_request: i64,
+    pub price_stack: i64,
 }
 
 impl Karbar {
@@ -109,6 +111,8 @@ impl Karbar {
                 points: 0,
                 last_daily_point_at: 0,
                 invite_code: code,
+                last_request: 0,
+                price_stack: 0,
             });
         };
 
@@ -135,7 +139,9 @@ impl Karbar {
             created_at = ?,
             updated_at = ?,
             points = ?,
-            last_daily_point_at = ?
+            last_daily_point_at = ?,
+            last_request = ?,
+            price_stack = ?
             where tid = ?
         ",
             self.fullname,
@@ -146,12 +152,39 @@ impl Karbar {
             self.updated_at,
             self.points,
             self.last_daily_point_at,
+            self.last_request,
+            self.price_stack,
             self.tid
         }
         .execute(&ctx.db)
         .await?;
 
         Ok(())
+    }
+
+    pub fn calc_cost(&mut self, cost: i64) -> i64 {
+        let now = crate::utils::now();
+        if self.last_request + Config::PRICE_STACK_RESET < now {
+            self.price_stack = 0;
+        }
+
+        self.last_request = now;
+        self.price_stack += 1;
+
+        let added = match self.price_stack {
+            1 => 0.0,
+            2 => 0.001,
+            3 => 0.03,
+            4 => 0.1,
+            5 => 0.3,
+            6 => 0.6,
+            7 => 1.1,
+            8 => 1.7,
+            9 => 3.0,
+            x => x as f64,
+        };
+
+        cost + (cost as f64 * added) as i64
     }
 
     pub async fn invited(ctx: &Ctx, code: &str) -> Result<(), AppErr> {
