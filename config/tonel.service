@@ -9,8 +9,8 @@ WorkingDirectory=/x/tonel/
 EnvironmentFile=/x/tonel/.env
 ExecStart=/x/tonel/target/release/tonel
 KillSignal=SIGQUIT
-StandardError=file:/x/bihosh/stderr.log
-StandardOutput=file:/x/bihosh/stdout.log
+StandardError=file:/x/tonel/stderr.log
+StandardOutput=file:/x/tonel/stdout.log
 NotifyAccess=all
 
 [Install]
