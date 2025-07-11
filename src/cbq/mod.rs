@@ -2,7 +2,7 @@ use crate::{
     Ctx, HR, TB,
     book::Book,
     config::Config,
-    db::{Flyer, Karbar, Proxy, Settings},
+    db::{Flyer, Karbar, KarbarStats, Proxy, Settings},
     error::AppErr,
     session::Session,
     state::{AdminGlobal as Ag, KeyData, State, Store, kd},
@@ -34,6 +34,7 @@ impl Cbq {
     pub async fn handle_global(&mut self) -> Result<bool, AppErr> {
         match self.key {
             KeyData::Menu => self.s.send_menu().await?,
+            KeyData::Donate => self.s.donate().await?,
             KeyData::GetProxy => self.s.get_proxy().await?,
             KeyData::GetVip => self.s.get_vip().await?,
             KeyData::GetV2ray => self.s.get_v2ray().await?,
@@ -78,11 +79,55 @@ impl Cbq {
                     .send_message(self.s.cid, "admin force join list")
                     .await?;
             }
+            Ag::KarbarFind => {
+                let m = concat!(
+                    "پیدا کردن کاربر 🔍\n\n",
+                    "1. ایدی عددی او را ارسال کنید\n",
+                    "2. ایدی اصلی او را با @ ارسال کنید\n",
+                    "3. پیامی از او ارسال کنید\n"
+                );
+                self.s.store.update(State::AdminFindKarbar).await?;
+                self.s.notify(m).await?;
+            }
+            Ag::KarbarBanToggle(kid) => {
+                if kid == self.s.karbar.tid {
+                    self.s.notify("خود را نمی توان مسدود کرد 🤡").await?;
+                    return Ok(true);
+                }
+                let ctx = &self.s.ctx;
+                let Some(mut k) = Karbar::find_with_tid(ctx, kid).await else {
+                    self.s.notify("کاربری برای مسدود کردن پیدا نشد 🤡").await?;
+                    return Ok(true);
+                };
+
+                k.banned = !k.banned;
+                k.set(ctx).await?;
+                self.s.send_karbar(&k).await?;
+            }
+            Ag::KarbarSetPoints(kid) => {
+                self.s.store.update(State::AdminKarbarSetPoints(kid)).await?;
+                self.s.notify("تعداد امتیاز را به صورت عدد ارسال کنید").await?;
+            },
             Ag::SendAll => {
-                self.s
-                    .bot
-                    .send_message(self.s.cid, "admin send all message")
-                    .await?;
+                let stats = KarbarStats::get(&self.s.ctx).await;
+                let stats = stats.unwrap_or_default();
+                let msg = indoc::formatdoc!(
+                    "ارسال همهگانی 🧆
+
+                    تعداد کاربران: {}
+                    تعداد کاربرانی که بات را بلاک کرده اند: {}
+                    تعداد کاربران فعال در ۵ ساعت گذشته: {}
+                    تعداد کاربران فعال در ۷ روز گذشته: {}
+
+                    پیام خود را ارسال کنید:
+                ",
+                    stats.total,
+                    stats.blocked,
+                    stats.active_5h,
+                    stats.active_7d
+                );
+                self.s.store.update(State::AdminSendAll).await?;
+                self.s.notify(&msg).await?;
             }
             Ag::ProxyList => self.admin_proxy_list(0).await?,
             Ag::FlyerList => self.admin_flyer_list(0).await?,
@@ -114,11 +159,17 @@ impl Cbq {
                     sbtn!(SetV2rayCost, "هزینه v2ray: {}", v2ray_cost),
                     sbtn!(SetVipCost, "هزینه VIP: {}", vip_cost),
                 ];
+                let kyb3 = [
+                    sbtn!(SetDonateMsg, "پیام حمایت مالی"),
+                    KeyData::main_menu_btn(),
+                    KeyData::main_menu_btn(),
+                ];
+                let kb = InlineKeyboardMarkup::new([kyb1, kyb2, kyb3]);
 
                 self.s
                     .bot
-                    .send_message(self.s.cid, "what do you want to change?")
-                    .reply_markup(InlineKeyboardMarkup::new([kyb1, kyb2]))
+                    .send_message(self.s.cid, "تنظیمات ⚙️")
+                    .reply_markup(kb)
                     .await?;
             }
             Ag::ProxyDel(page, id) => {
@@ -212,10 +263,75 @@ impl Cbq {
                 let msg = format!("پیام فعلی VIP 🔽⬇️👇🔻\n\n{ex}");
                 self.set_settings(msg, State::AdminSetVipMsg).await?;
                 let mid = MessageId(mid as i32);
-                self.s
-                    .bot
-                    .copy_message(self.s.cid, self.s.conf.dev, mid)
-                    .await?;
+                let dev = self.s.conf.dev;
+                self.s.bot.forward_message(self.s.cid, dev, mid).await?;
+            }
+            Ag::SetDonateMsg => {
+                let ex = "پیام جدید را ارسال کنید و یا به منوی اصلی بروید";
+                let Some(mid) = self.s.settings.vip_msg else {
+                    let m = format!(
+                        "هیچ پیامی برای حمایت مالی تنظیم نشده 🍏\n\n{ex}"
+                    );
+                    self.set_settings(m, State::AdminSetDonateMsg).await?;
+                    return Ok(true);
+                };
+                let msg = format!("پیام فعلی حمایت مالی 🔽⬇️👇🔻\n\n{ex}");
+                self.set_settings(msg, State::AdminSetDonateMsg).await?;
+                let mid = MessageId(mid as i32);
+                let dev = self.s.conf.dev;
+                self.s.bot.forward_message(self.s.cid, dev, mid).await?;
+            }
+            Ag::SendAllConfirm(df, mid) => {
+                let bcid = self.s.cid;
+                let bot = self.s.bot.clone();
+                let ctx = self.s.ctx.clone();
+                let bmid = MessageId(mid);
+
+                if df {
+                    bot.forward_message(self.s.cid, bcid, bmid).await?;
+                } else {
+                    bot.copy_message(self.s.cid, bcid, bmid).await?;
+                }
+
+                self.s.send_menu().await?;
+
+                tokio::task::spawn(async move {
+                    let mut count = 0usize;
+                    let mut page = 0u32;
+                    loop {
+                        let Ok(ks) = Karbar::sa_list(&ctx, page).await else {
+                            break;
+                        };
+
+                        for mut k in ks {
+                            let is_err = if df {
+                                bot.forward_message(k.cid(), bcid, bmid)
+                                    .await
+                                    .is_err()
+                            } else {
+                                bot.copy_message(k.cid(), bcid, bmid)
+                                    .await
+                                    .is_err()
+                            };
+
+                            if is_err {
+                                k.blocked = true;
+                                let _ = k.set(&ctx).await;
+                            } else {
+                                count += 1;
+                            }
+                        }
+
+                        tokio::time::sleep(Config::SEND_ALL_SLEEP).await;
+                        page += 1;
+                    }
+
+                    let m = format!("پیام همگانی به {count} کاربر ارسال شد ✅");
+                    let _ = bot
+                        .send_message(bcid, m)
+                        .reply_markup(KeyData::main_menu())
+                        .await;
+                });
             }
         }
 

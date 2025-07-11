@@ -6,6 +6,7 @@ use std::{
     collections::HashSet,
     str::FromStr,
     sync::{Arc, OnceLock},
+    time::Duration,
 };
 use teloxide::{
     Bot, dispatching::dialogue::ErasedStorage, net::default_reqwest_settings,
@@ -73,6 +74,7 @@ pub struct Config {
     pub admins: HashSet<UserId>,
     pub dev: UserId,
     pub start_url: reqwest::Url,
+    pub donate_url: reqwest::Url,
     /// without @
     pub bot_username: String,
 }
@@ -82,11 +84,14 @@ impl Config {
     pub const DAILY_POINTS_DELAY: i64 = 24 * 3600;
     pub const CODE_ABC: &[u8] =
         b"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    pub const SEND_ALL_SLEEP: Duration = Duration::from_secs(20);
 
     fn init() -> Self {
         let ct = config_toml::get();
         let su = format!("https://t.me/{}?start=x", ct.bot.username);
-        let start_url = reqwest::Url::from_str(&su).expect("invalid start url");
+        let start_url = reqwest::Url::from_str(&su).expect("bad start url");
+        let du = format!("https://t.me/{}?start=donate", ct.bot.username);
+        let donate_url = reqwest::Url::from_str(&du).expect("bad donate url");
 
         Self {
             bot_token: ct.bot.token,
@@ -96,6 +101,7 @@ impl Config {
             dev: UserId(ct.bot.dev),
             bot_username: ct.bot.username,
             start_url,
+            donate_url,
         }
     }
 

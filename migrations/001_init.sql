@@ -8,7 +8,8 @@ create table if not exists karbars (
     updated_at integer not null,
     points integer not null default 0,
     last_daily_point_at integer not null default 0,
-    invite_code text not null unique
+    invite_code text not null unique,
+    blocked boolean not null default false
 );
 
 create table if not exists settings (
@@ -18,7 +19,8 @@ create table if not exists settings (
     proxy_cost integer not null default 100,
     v2ray_cost integer not null default 100,
     vip_cost integer not null default 200,
-    vip_msg integer
+    vip_msg integer,
+    donate_msg integer
 );
 insert into settings(id) values(1);
 

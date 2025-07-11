@@ -1,3 +1,4 @@
+use crate::config::Config;
 use teloxide::dispatching::dialogue;
 use teloxide::dispatching::dialogue::ErasedStorage;
 use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup};
@@ -10,6 +11,7 @@ pub enum KeyData {
     Unknown,
     // global
     Menu,
+    Donate,
     GetProxy,
     GetVip,
     GetV2ray,
@@ -29,16 +31,21 @@ pub mod keyboard {
     pub const GET_PROXY: &str = "پروکسی";
     pub const GET_VIP: &str = "کانفیگ VIP 🍓";
     pub const GET_V2RAY: &str = "V2ray";
-    pub const DAILY_PONT: &str = "امتیاز روزانه";
+    pub const DAILY_PONT: &str = "امتیاز روزانه 🍅";
     pub const INVITE: &str = "دعوت دوستان";
-    pub const MENU: &str = "منو 🧻";
+    pub const MENU: &str = "منو";
+    pub const DONATE: &str = "حمایت مالی 💰";
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize, Clone, Copy)]
 #[serde(rename_all = "snake_case")]
 pub enum AdminGlobal {
     ForceJoinList,
+    KarbarFind,
+    KarbarSetPoints(i64),
+    KarbarBanToggle(i64),
     SendAll,
+    SendAllConfirm(bool, i32),
     ProxyList,
     V2rayList,
     Settings,
@@ -51,6 +58,7 @@ pub enum AdminGlobal {
     SetV2rayCost,
     SetVipCost,
     SetVipMsg,
+    SetDonateMsg,
     FlyerList,
     FlyerDel(u32, i64),
     FlyerViewsReset(u32, i64),
@@ -75,9 +83,18 @@ impl KeyData {
     pub fn main_menu_btn() -> InlineKeyboardButton {
         InlineKeyboardButton::callback("💼 منو", KeyData::Menu)
     }
+    pub fn donate_url() -> InlineKeyboardButton {
+        InlineKeyboardButton::url(
+            "حمایت مالی 💰",
+            Config::get().donate_url.clone(),
+        )
+    }
+    pub fn donate_btn() -> InlineKeyboardButton {
+        InlineKeyboardButton::callback("حمایت مالی 💰", KeyData::Donate)
+    }
 
     pub fn main_menu() -> InlineKeyboardMarkup {
-        InlineKeyboardMarkup::new([[Self::main_menu_btn()]])
+        InlineKeyboardMarkup::new([[Self::main_menu_btn(), Self::donate_btn()]])
     }
 
     // pub fn nothing() -> InlineKeyboardButton {
@@ -107,6 +124,10 @@ impl From<&String> for KeyData {
 pub enum State {
     #[default]
     Menu,
+    AdminSendAll,
+    AdminFindKarbar,
+    AdminKarbarSetPoints(i64),
+
     AdminProxyList,
     AdminProxyAdd,
 
@@ -123,6 +144,7 @@ pub enum State {
     AdminSetV2rayCost,
     AdminSetVipCost,
     AdminSetVipMsg,
+    AdminSetDonateMsg,
 }
 
 pub trait CutOff {

@@ -4,18 +4,20 @@ use crate::{
     db::{Flyer, Karbar, Proxy, Settings},
     error::AppErr,
     session::Session,
-    state::{KeyData, State, Store, keyboard},
-    utils,
+    state::{AdminGlobal as Ag, KeyData, State, Store, kd, keyboard},
 };
 use std::str::FromStr;
 use teloxide::{
-    net::Download, payloads::SendMessageSetters, prelude::Requester,
-    types::Message,
+    net::Download,
+    payloads::SendMessageSetters,
+    prelude::Requester,
+    types::{InlineKeyboardButton, InlineKeyboardMarkup, Message},
 };
 
 pub struct Payam {
     msg: Message,
     s: Session,
+    state: State,
 }
 
 impl Payam {
@@ -27,100 +29,16 @@ impl Payam {
         let conf = Config::get();
         let settings = Settings::get(&ctx.db).await;
         let cid = msg.chat.id;
+        let now = crate::utils::now();
 
         let mut payam = Self {
-            s: Session {
-                bot,
-                settings,
-                cid,
-                store,
-                karbar,
-                ctx,
-                conf,
-                now: utils::now(),
-            },
+            s: Session { bot, settings, cid, store, karbar, ctx, conf, now },
+            state,
             msg,
         };
 
-        async fn gn<T: FromStr>(
-            s: &Session, msg: &Message,
-        ) -> Result<Option<T>, AppErr> {
-            let Some(txt) = msg.text() else {
-                s.notify("پیام متنی ندارد ❌").await?;
-                return Ok(None);
-            };
-
-            let Ok(value) = txt.parse::<T>() else {
-                s.notify("پیام شما عدد نیست ❌").await?;
-                return Ok(None);
-            };
-
-            Ok(Some(value))
-        }
-
-        macro_rules! set_int {
-            ($val:ident) => {{
-                let Some(value) = gn(&payam.s, &payam.msg).await? else {
-                    return Ok(());
-                };
-
-                payam.s.settings.$val = value;
-                payam.s.settings.set(&payam.s.ctx.db).await?;
-                payam.s.send_menu().await?;
-            }};
-        }
-
-        if is_admin {
-            match state {
-                State::AdminProxyAdd => payam.admin_proxy_add().await?,
-                State::AdminSetVipMsg => payam.admin_set_vip_msg().await?,
-                State::AdminSetVipCost => set_int!(vip_cost),
-                State::AdminSetProxyCost => set_int!(proxy_cost),
-                State::AdminSetV2rayCost => set_int!(v2ray_cost),
-                State::AdminSetInvitPt => set_int!(invite_points),
-                State::AdminSetDailyPt => set_int!(daily_points),
-                State::AdminFlyerSetMaxView(id) => {
-                    let Some(mv) = gn::<i64>(&payam.s, &payam.msg).await?
-                    else {
-                        return Ok(());
-                    };
-                    let mut flyer = Flyer::get(&payam.s.ctx, id).await?;
-                    flyer.max_views = mv.max(-1);
-                    flyer.set(&payam.s.ctx).await?;
-                }
-                State::AdminFlyerAdd => {
-                    let Some(label) = payam.msg.text() else {
-                        payam.s.notify("پیام شما هیچ متنی ندارد 🍌").await?;
-                        return Ok(());
-                    };
-                    let m = indoc::formatdoc!(
-                        "نام انتخابی شما: {label}
-                        
-                        پیام تبلیغ را ارسال کنید"
-                    );
-                    let sn = State::AdminFlyerSendMessage {
-                        label: label.to_string(),
-                    };
-                    payam.s.store.update(sn).await?;
-                    payam.s.notify(&m).await?;
-                }
-                State::AdminFlyerSendMessage { label } => {
-                    let dev = payam.s.conf.dev;
-                    let (cid, mid) = (payam.s.cid, payam.msg.id);
-                    let mid = payam.s.bot.copy_message(dev, cid, mid).await?;
-                    let mut flyer = Flyer::new(label, mid.0 as i64);
-                    flyer.add(&payam.s.ctx).await?;
-                    let m = concat!(
-                        "تبلیغ شما ثبت شد ✅\n\nحداکثر تعداد بازدید ",
-                        "را ارسال کنید و یا به منوی اصلی بروید"
-                    );
-                    let st = State::AdminFlyerSetMaxView(flyer.id);
-                    payam.s.store.update(st).await?;
-                    payam.s.notify(m).await?;
-                }
-                State::Menu | State::AdminFlyerList | State::AdminProxyList => {
-                }
-            }
+        if is_admin && payam.handle_admin().await? {
+            return Ok(());
         }
 
         let Some(txt) = payam.msg.text() else {
@@ -134,21 +52,198 @@ impl Payam {
             keyboard::GET_V2RAY => payam.s.get_v2ray().await?,
             keyboard::GET_PROXY => payam.s.get_proxy().await?,
             keyboard::MENU => payam.s.send_menu().await?,
+            keyboard::DONATE => payam.s.donate().await?,
             _ => {}
         }
 
         Ok(())
     }
 
+    async fn gn<T: FromStr>(&self) -> Result<Option<T>, AppErr> {
+        let Some(txt) = self.msg.text() else {
+            self.s.notify("پیام متنی ندارد ❌").await?;
+            return Ok(None);
+        };
+
+        let Ok(value) = txt.parse::<T>() else {
+            self.s.notify("پیام شما عدد نیست ❌").await?;
+            return Ok(None);
+        };
+
+        Ok(Some(value))
+    }
+
+    async fn handle_admin(&mut self) -> Result<bool, AppErr> {
+        macro_rules! set_int {
+            ($val:ident) => {{
+                let Some(value) = self.gn().await? else {
+                    return Ok(true);
+                };
+
+                self.s.settings.$val = value;
+                self.s.settings.set(&self.s.ctx.db).await?;
+                self.s.send_menu().await?;
+            }};
+        }
+        match &self.state {
+            State::AdminProxyAdd => self.admin_proxy_add().await?,
+            State::AdminSetVipMsg => self.admin_set_vip_msg().await?,
+            State::AdminSetDonateMsg => self.admin_set_donate_msg().await?,
+            State::AdminFindKarbar => self.admin_find_karbar().await?,
+            State::AdminSetVipCost => set_int!(vip_cost),
+            State::AdminSetProxyCost => set_int!(proxy_cost),
+            State::AdminSetV2rayCost => set_int!(v2ray_cost),
+            State::AdminSetInvitPt => set_int!(invite_points),
+            State::AdminSetDailyPt => set_int!(daily_points),
+            State::AdminKarbarSetPoints(kid) => {
+                let Some(mv) = self.gn::<i64>().await? else {
+                    return Ok(true);
+                };
+                let k = Karbar::find_with_tid(&self.s.ctx, *kid).await;
+                let Some(mut karbar) = k else {
+                    self.s.notify("کاربری پیدا نشد 🤡").await?;
+                    return Ok(true);
+                };
+                karbar.points = mv;
+                karbar.set(&self.s.ctx).await?;
+                self.s.send_karbar(&karbar).await?;
+            }
+
+            State::AdminFlyerSetMaxView(id) => {
+                let Some(mv) = self.gn::<i64>().await? else {
+                    return Ok(true);
+                };
+                let mut flyer = Flyer::get(&self.s.ctx, *id).await?;
+                flyer.max_views = mv.max(-1);
+                flyer.set(&self.s.ctx).await?;
+                self.s.notify("حداکثر بازدید ثبت شد ✅").await?;
+            }
+            State::AdminFlyerAdd => {
+                let Some(label) = self.msg.text() else {
+                    self.s.notify("پیام شما هیچ متنی ندارد 🍌").await?;
+                    return Ok(true);
+                };
+                let m = indoc::formatdoc!(
+                    "نام انتخابی شما: {label}
+                        
+                        پیام تبلیغ را ارسال کنید"
+                );
+                let sn =
+                    State::AdminFlyerSendMessage { label: label.to_string() };
+                self.s.store.update(sn).await?;
+                self.s.notify(&m).await?;
+            }
+            State::AdminFlyerSendMessage { label } => {
+                let dev = self.s.conf.dev;
+                let (cid, mid) = (self.s.cid, self.msg.id);
+                let mx = self.s.bot.forward_message(dev, cid, mid).await?;
+                let mut flyer = Flyer::new(label.clone(), mx.id.0 as i64);
+                flyer.add(&self.s.ctx).await?;
+                let m = concat!(
+                    "تبلیغ شما ثبت شد ✅\n\nحداکثر تعداد بازدید ",
+                    "را ارسال کنید و یا به منوی اصلی بروید"
+                );
+                let st = State::AdminFlyerSetMaxView(flyer.id);
+                self.s.store.update(st).await?;
+                self.s.notify(m).await?;
+            }
+            State::AdminSendAll => {
+                let mid = self.msg.id.0;
+                let df = self.msg.forward_origin().is_some();
+                let m = concat!(
+                    "آیا از ارسال این پیام اطمینان کامل دارید؟\n\n",
+                    "⚠ در صورت خطا هیچ گونه امکان توقف ارسال نمی باشد ⚠\n\n",
+                    "بعد از تایید. ربات ابتدا پیام را برای شما ارسال می کند",
+                    "و سپس برای همه کاربران.\n",
+                    "بنابراین، این پیام باید برای خودتان دوبار ارسال شود"
+                );
+                self.s
+                    .bot
+                    .send_message(self.s.cid, m)
+                    .reply_markup(InlineKeyboardMarkup::new([[
+                        InlineKeyboardButton::callback(
+                            "تایید و ارسال ✅",
+                            kd!(ag, Ag::SendAllConfirm(df, mid)),
+                        ),
+                        KeyData::main_menu_btn(),
+                    ]]))
+                    .await?;
+            }
+            State::Menu | State::AdminFlyerList | State::AdminProxyList => {
+                return Ok(false);
+            }
+        }
+
+        Ok(true)
+    }
+
     async fn admin_set_vip_msg(&mut self) -> HR {
-        let new_msg = self
-            .s
-            .bot
-            .copy_message(self.s.conf.dev, self.s.cid, self.msg.id)
-            .await?;
-        self.s.settings.vip_msg = Some(new_msg.0 as i64);
+        let (d, cid, mid) = (self.s.conf.dev, self.s.cid, self.msg.id);
+        let mx = self.s.bot.forward_message(d, cid, mid).await?;
+        // let mx = self.s.bot.copy_message(d, cid, mid).await?;
+        self.s.settings.vip_msg = Some(mx.id.0 as i64);
         self.s.settings.set(&self.s.ctx.db).await?;
         self.s.send_menu().await?;
+        Ok(())
+    }
+
+    async fn admin_set_donate_msg(&mut self) -> HR {
+        let (d, cid, mid) = (self.s.conf.dev, self.s.cid, self.msg.id);
+        let mx = self.s.bot.forward_message(d, cid, mid).await?;
+        // let mx = self.s.bot.copy_message(d, cid, mid).await?;
+        self.s.settings.donate_msg = Some(mx.id.0 as i64);
+        self.s.settings.set(&self.s.ctx.db).await?;
+        self.s.send_menu().await?;
+        Ok(())
+    }
+
+    async fn admin_find_karbar(&mut self) -> HR {
+        let (tid, una) = 'a: {
+            if let Some(u) = self.msg.forward_from_user() {
+                break 'a (Some(u.id.0 as i64), None);
+            }
+
+            let Some(txt) = self.msg.text() else {
+                break 'a (None, None);
+            };
+            let txt = txt.trim();
+            if let Some(x) = txt.strip_prefix("@") {
+                break 'a (None, Some(x));
+            } else if let Ok(id) = txt.parse::<u64>() {
+                break 'a (Some(id as i64), None);
+            }
+
+            (None, None)
+        };
+
+        let karbar = {
+            if let Some(tid) = tid {
+                Karbar::find_with_tid(&self.s.ctx, tid).await
+            } else if let Some(username) = una {
+                Karbar::find_with_username(&self.s.ctx, &username).await
+            } else {
+                self.s.notify("هیج ایدیی پیدا نشد 🤡").await?;
+                return Ok(());
+            }
+        };
+
+        let Some(karbar) = karbar else {
+            let mut m =
+                String::from("هیچ کاربری با این اطلاعات پیدا نشد 🤡\n\n");
+            if let Some(tid) = tid {
+                m += "id: ";
+                m += &tid.to_string();
+            }
+            if let Some(un) = una {
+                m += "username: @";
+                m += un;
+            }
+            self.s.notify(&m).await?;
+            return Ok(());
+        };
+
+        self.s.send_karbar(&karbar).await?;
+
         Ok(())
     }
 

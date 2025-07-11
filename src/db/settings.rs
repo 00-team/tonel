@@ -12,6 +12,7 @@ pub struct Settings {
     pub v2ray_cost: i64,
     pub vip_cost: i64,
     pub vip_msg: Option<i64>,
+    pub donate_msg: Option<i64>,
 }
 
 impl Default for Settings {
@@ -24,6 +25,7 @@ impl Default for Settings {
             v2ray_cost: 100,
             vip_cost: 200,
             vip_msg: None,
+            donate_msg: None,
         }
     }
 }
@@ -65,7 +67,8 @@ impl Settings {
             proxy_cost = ?,
             v2ray_cost = ?,
             vip_cost = ?,
-            vip_msg = ?
+            vip_msg = ?,
+            donate_msg = ?
             where id = 1
         ",
             self.invite_points,
@@ -74,6 +77,7 @@ impl Settings {
             self.v2ray_cost,
             self.vip_cost,
             self.vip_msg,
+            self.donate_msg,
         }
         .execute(pool)
         .await?;

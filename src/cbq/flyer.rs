@@ -32,7 +32,8 @@ impl super::Cbq {
                 let flyer = Flyer::get(&self.s.ctx, id).await?;
                 let msg = indoc::formatdoc!(
                     r#"{} 👆👆👆
-                    viwes: {}/{}
+                    بازدید: {}
+                    حداکثر بازدید: {}
                     فعال: {}"#,
                     flyer.label,
                     flyer.views,
@@ -50,7 +51,7 @@ impl super::Cbq {
                         kd!(ag, Ag::FlyerDisabledToggle(page, flyer.id)),
                     ),
                     InlineKeyboardButton::callback(
-                        "ریست کردن بازدید ها ⚠",
+                        "reset views ⚠",
                         kd!(ag, Ag::FlyerViewsReset(page, flyer.id)),
                     ),
                     InlineKeyboardButton::callback(
@@ -61,19 +62,22 @@ impl super::Cbq {
 
                 let kyb2 = [
                     InlineKeyboardButton::callback(
-                        "<- بازگشت",
+                        "بازگشت ⬅️",
                         KeyData::BookPagination(page),
                     ),
                     InlineKeyboardButton::callback(
-                        "تنظیم حداکثر بازدید ها 🐝",
+                        "max views 🐝",
                         kd!(ag, Ag::FlyerSetMaxViews(page, flyer.id)),
                     ),
                     KeyData::main_menu_btn(),
                 ];
 
+                let (cid, dev) = (self.s.cid, self.s.conf.dev);
+                let mid = MessageId(flyer.mid as i32);
+                self.s.bot.copy_message(cid, dev, mid).await?;
                 self.s
                     .bot
-                    .send_message(self.s.cid, msg)
+                    .send_message(cid, msg)
                     .reply_markup(InlineKeyboardMarkup::new([kyb1, kyb2]))
                     .await?;
             }

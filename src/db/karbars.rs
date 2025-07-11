@@ -16,6 +16,7 @@ pub struct Karbar {
     pub points: i64,
     pub last_daily_point_at: i64,
     pub invite_code: String,
+    pub blocked: bool,
 }
 
 impl Karbar {
@@ -26,6 +27,26 @@ impl Karbar {
     pub fn is_admin(&self) -> bool {
         let conf = Config::get();
         conf.admins.contains(&UserId(self.tid as u64))
+    }
+
+    pub async fn find_with_tid(ctx: &Ctx, tid: i64) -> Option<Self> {
+        sqlx::query_as! {
+            Self, "select * from karbars where tid = ?", tid
+        }
+        .fetch_optional(&ctx.db)
+        .await
+        .ok()
+        .flatten()
+    }
+
+    pub async fn find_with_username(ctx: &Ctx, uname: &str) -> Option<Self> {
+        sqlx::query_as! {
+            Self, "select * from karbars where username = ?", uname
+        }
+        .fetch_optional(&ctx.db)
+        .await
+        .ok()
+        .flatten()
     }
 
     pub async fn init(ctx: &Ctx, user: &User, r: &str) -> Result<Self, AppErr> {
@@ -79,6 +100,7 @@ impl Karbar {
                 tid,
                 fullname,
                 banned: false,
+                blocked: false,
                 username,
                 updated_at,
                 created_at: updated_at,
@@ -95,6 +117,7 @@ impl Karbar {
         karbar.username = username;
         karbar.fullname = fullname;
         karbar.updated_at = updated_at;
+        karbar.blocked = false;
 
         karbar.set(ctx).await?;
 
@@ -106,6 +129,7 @@ impl Karbar {
             fullname = ?,
             username = ?,
             banned = ?,
+            blocked = ?,
             created_at = ?,
             updated_at = ?,
             points = ?,
@@ -115,6 +139,7 @@ impl Karbar {
             self.fullname,
             self.username,
             self.banned,
+            self.blocked,
             self.created_at,
             self.updated_at,
             self.points,
@@ -147,5 +172,63 @@ impl Karbar {
         karbar.set(ctx).await?;
 
         Ok(())
+    }
+
+    pub async fn sa_list(ctx: &Ctx, page: u32) -> Result<Vec<Self>, AppErr> {
+        let offset = page * 100;
+        let res = sqlx::query_as!(
+            Self,
+            "select * from karbars where NOT blocked limit 100 offset ?",
+            offset
+        )
+        .fetch_all(&ctx.db)
+        .await?;
+        Ok(res)
+    }
+}
+
+#[derive(Default)]
+pub struct KarbarStats {
+    pub total: i64,
+    pub blocked: i64,
+    pub active_5h: i64,
+    pub active_7d: i64,
+}
+
+impl KarbarStats {
+    pub async fn get(ctx: &Ctx) -> Result<Self, AppErr> {
+        let now = crate::utils::now();
+        let p5h = now - 5 * 3600;
+        let p7d = now - 7 * 24 * 3600;
+
+        // let a5h = sqlx::query! {
+        //     "select COUNT(1) as count from karbars where updated_at > ?", p5h
+        // }
+        // .fetch_one(&ctx.db)
+        // .await?;
+        //
+        // let a7d = sqlx::query! {
+        //     "select COUNT(1) as count from karbars where updated_at > ?", p7d
+        // }
+        // .fetch_one(&ctx.db)
+        // .await?;
+
+        let count = sqlx::query! {
+            "select
+                COUNT(1) as total,
+                SUM(blocked) as blocked,
+                SUM(updated_at > ?) as active_5h,
+                SUM(updated_at > ?) as active_7d
+            from karbars", p5h, p7d
+        }
+        .fetch_one(&ctx.db)
+        .await?;
+
+        Ok(Self {
+            total: count.total,
+            blocked: count.blocked.unwrap_or(-1),
+            active_5h: count.active_5h.unwrap_or(-1),
+            active_7d: count.active_7d.unwrap_or(-1),
+        })
     }
 }

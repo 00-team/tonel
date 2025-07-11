@@ -133,13 +133,9 @@ pub async fn handle_commands(
             s.send_welcome().await?;
 
             match key {
-                "hi" => {
-                    s.bot.send_message(user.id, format!("hi {val}")).await?;
-                }
-                _ => {
-                    s.send_menu().await?;
-                }
-            }
+                "donate" => s.donate().await?,
+                _ => s.send_menu().await?,
+            };
         }
         TonelCommand::Menu => {
             let karbar = Karbar::init(&ctx, &user, "").await?;
