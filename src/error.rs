@@ -1,5 +1,5 @@
 use std::fmt::Debug;
-use teloxide::{DownloadError, RequestError};
+use teloxide::{ApiError, DownloadError, RequestError};
 
 #[derive(Debug)]
 pub enum Worm {
@@ -7,6 +7,8 @@ pub enum Worm {
     NotFound,
     AlreadyExists,
     Banned,
+    Blocked,
+    MessageToDeleteNotFound,
     TxRq(RequestError),
     Sqlx(sqlx::Error),
     Down(DownloadError),
@@ -20,10 +22,15 @@ pub struct AppErr {
 
 impl From<RequestError> for AppErr {
     fn from(value: RequestError) -> Self {
-        Self {
-            debug: format!("[{value}]: {value:#?}"),
-            worm: Worm::TxRq(value),
-        }
+        let debug = format!("[{value}]: {value:#?}");
+        let worm = match value {
+            RequestError::Api(ApiError::BotBlocked) => Worm::Blocked,
+            RequestError::Api(ApiError::MessageToDeleteNotFound) => {
+                Worm::MessageToDeleteNotFound
+            }
+            _ => Worm::TxRq(value),
+        };
+        Self { debug, worm }
     }
 }
 
@@ -48,10 +55,7 @@ impl From<sqlx::Error> for AppErr {
 
 impl From<Box<dyn std::error::Error + Send + Sync>> for AppErr {
     fn from(value: Box<dyn std::error::Error + Send + Sync>) -> Self {
-        Self {
-            worm: Worm::Unknown,
-            debug: format!("[{value}]: {value:#?}"),
-        }
+        Self { worm: Worm::Unknown, debug: format!("[{value}]: {value:#?}") }
     }
 }
 

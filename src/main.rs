@@ -88,7 +88,10 @@ type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 
 impl ErrorHandler<AppErr> for SendDevErrorHandler {
     fn handle_error(self: Arc<Self>, error: AppErr) -> BoxFuture<'static, ()> {
-        if let Worm::Banned = error.worm {
+        if matches!(
+            error.worm,
+            Worm::Blocked | Worm::Banned | Worm::MessageToDeleteNotFound
+        ) {
             return Box::pin(async {});
         }
 

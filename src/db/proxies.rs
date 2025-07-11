@@ -83,7 +83,7 @@ impl Proxy {
     pub async fn ch_list(ctx: &Ctx) -> Result<Vec<Proxy>, AppErr> {
         let res = sqlx::query_as!(
             Self,
-            "select * from proxies order by RANDOM() limit 4",
+            "select * from proxies order by RANDOM() limit 3",
         )
         .fetch_all(&ctx.db)
         .await?;

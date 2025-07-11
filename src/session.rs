@@ -29,7 +29,7 @@ pub struct Session {
 
 impl Session {
     pub async fn ch_send(&mut self) -> HR {
-        if self.settings.ch_last_sent + 3600 > self.now {
+        if self.settings.ch_last_sent + 3 * 3600 > self.now {
             return Ok(());
         }
         self.settings.ch_last_sent = self.now;
@@ -37,15 +37,14 @@ impl Session {
         let su = &self.conf.start_url;
 
         let pxs = Proxy::ch_list(&self.ctx).await?;
-        let mut kyb1 = Vec::with_capacity(4);
+        let mut kyb1 = Vec::with_capacity(3);
         for px in pxs.iter() {
             let Ok(url) = reqwest::Url::from_str(&px.url()) else { continue };
             kyb1.push(InlineKeyboardButton::url("اتصال", url));
         }
 
         let kyb2 = vec![
-            InlineKeyboardButton::url("پروکسی رایگان", su.clone()),
-            InlineKeyboardButton::url("v2ray رایگان", su.clone()),
+            InlineKeyboardButton::url("v2ray رایگان 🍓", su.clone()),
             KeyData::donate_url(),
         ];
 
