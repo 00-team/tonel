@@ -69,6 +69,18 @@ impl Session {
         Ok(())
     }
 
+    pub async fn notify_no_points(&self, text: &str) -> HR {
+        let kb = InlineKeyboardMarkup::new([
+            vec![KeyData::main_menu_btn(), KeyData::donate_btn()],
+            vec![InlineKeyboardButton::callback(
+                "دریافت امتیاز روزانه 🍅",
+                KeyData::GetDailyPoints,
+            )],
+        ]);
+        self.bot.send_message(self.cid, text).reply_markup(kb).await?;
+        Ok(())
+    }
+
     pub async fn donate(&self) -> HR {
         let kyb = InlineKeyboardMarkup::new([[KeyData::main_menu_btn()]]);
         let Some(msg) = self.settings.donate_msg else {
@@ -108,7 +120,7 @@ impl Session {
 
             📈 با فعالیت روزانه و دعوت از دوستان، امتیاز شما افزایش می‌یابد."
             );
-            self.notify(m).await?;
+            self.notify_no_points(m).await?;
             return Ok(());
         }
 
@@ -146,7 +158,10 @@ impl Session {
     pub async fn get_proxy(&mut self) -> HR {
         let cost = self.karbar.calc_cost(self.settings.proxy_cost);
         if self.karbar.points < cost {
-            self.notify("شما امتیاز کافی برای دریافت پروکسی ندارید 🐧").await?;
+            self.notify_no_points(
+                "شما امتیاز کافی برای دریافت پروکسی ندارید 🐧",
+            )
+            .await?;
             return Ok(());
         }
 
@@ -238,7 +253,7 @@ impl Session {
     pub async fn get_v2ray(&mut self) -> HR {
         let cost = self.karbar.calc_cost(self.settings.v2ray_cost);
         if self.karbar.points < cost {
-            self.notify("شما امتیاز کافی برای دریافت v2ray ندارید 🐧").await?;
+            self.notify_no_points("شما امتیاز کافی برای دریافت v2ray ندارید 🐧").await?;
             return Ok(());
         }
 
