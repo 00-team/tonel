@@ -46,7 +46,7 @@ impl super::Cbq {
                     flyer.views,
                     flyer.max_views,
                     if flyer.disabled { "❌" } else { "✅" },
-                    flyer.link.as_ref().map(|v| v.as_str()).unwrap_or("---")
+                    flyer.link.as_deref().unwrap_or("---")
                 );
 
                 let kyb1 = vec![

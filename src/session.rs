@@ -86,9 +86,7 @@ impl Session {
     }
 
     pub async fn flyer_btn(&mut self) -> Option<InlineKeyboardButton> {
-        let Some(mut flyer) = Flyer::get_good_link(&self.ctx).await else {
-            return None;
-        };
+        let mut flyer = Flyer::get_good_link(&self.ctx).await?;
 
         let u = flyer.link.and_then(|v| reqwest::Url::from_str(&v).ok());
         let Some(url) = u else {
@@ -557,7 +555,7 @@ impl Session {
             bol(karbar.blocked),
             karbar.created_at,
             karbar.updated_at,
-            karbar.username.as_ref().map(|v| v.as_str()).unwrap_or("---"),
+            karbar.username.as_deref().unwrap_or("---"),
             karbar.invite_code
         );
 

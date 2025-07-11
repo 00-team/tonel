@@ -9,7 +9,11 @@ use std::{
     time::Duration,
 };
 use teloxide::{
-    dispatching::dialogue::ErasedStorage, net::default_reqwest_settings, prelude::RequesterExt, types::{ChatId, UserId}, Bot
+    Bot,
+    dispatching::dialogue::ErasedStorage,
+    net::default_reqwest_settings,
+    prelude::RequesterExt,
+    types::{ChatId, UserId},
 };
 
 use crate::state::State;
@@ -77,7 +81,7 @@ pub struct Config {
     pub donate_url: reqwest::Url,
     /// without @
     pub bot_username: String,
-    pub channel: ChatId
+    pub channel: ChatId,
 }
 
 impl Config {
@@ -105,7 +109,7 @@ impl Config {
             bot_username: ct.bot.username,
             start_url,
             donate_url,
-            channel: ChatId(ct.bot.channel)
+            channel: ChatId(ct.bot.channel),
         }
     }
 
@@ -146,13 +150,13 @@ impl Config {
         let conf = Self::get();
         let uri = format!("sqlite://{}", conf.db_path);
         let cpt = SqliteConnectOptions::from_str(&uri)
-            .expect(&format!(
-                "could not init sqlite connection with uri: {uri}"
-            ))
+            .unwrap_or_else(|_| {
+                panic!("could not init sqlite connection with uri: {uri}")
+            })
             .journal_mode(SqliteJournalMode::Off);
 
         SqlitePool::connect_with(cpt)
             .await
-            .expect(&format!("sqlite connection failed with: {uri}"))
+            .unwrap_or_else(|_| panic!("sqlite connection failed with: {uri}"))
     }
 }

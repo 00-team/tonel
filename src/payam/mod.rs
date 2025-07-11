@@ -243,7 +243,7 @@ impl Payam {
             if let Some(tid) = tid {
                 Karbar::find_with_tid(&self.s.ctx, tid).await
             } else if let Some(username) = una {
-                Karbar::find_with_username(&self.s.ctx, &username).await
+                Karbar::find_with_username(&self.s.ctx, username).await
             } else {
                 self.s.notify("هیج ایدیی پیدا نشد 🤡").await?;
                 return Ok(());

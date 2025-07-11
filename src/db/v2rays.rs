@@ -27,12 +27,24 @@ impl V2ray {
     }
 
     pub fn from_link(link: &str) -> Option<Self> {
-        let url = reqwest::Url::from_str(link).ok()?;
+        let link = link.trim();
+        if link.is_empty() {
+            return None;
+        }
+        let label = if let Ok(url) = reqwest::Url::from_str(link) {
+            url.host_str().unwrap_or("<no host>").to_string()
+        } else {
+            let mut out = String::with_capacity(32);
+            for ch in link.chars().take(32) {
+                out.push(ch);
+            }
+            out
+        };
 
         let v2 = Self {
             id: 0,
-            label: url.host_str()?.to_string(),
-            link: url.to_string(),
+            label,
+            link: link.to_string(),
             dn_votes: 0,
             up_votes: 0,
             disabled: false,

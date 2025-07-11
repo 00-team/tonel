@@ -21,7 +21,7 @@ pub struct AppErr {
 impl From<RequestError> for AppErr {
     fn from(value: RequestError) -> Self {
         Self {
-            debug: format!("[{}]: {value:#?}", value.to_string()),
+            debug: format!("[{value}]: {value:#?}"),
             worm: Worm::TxRq(value),
         }
     }
@@ -38,7 +38,7 @@ impl From<DownloadError> for AppErr {
 
 impl From<sqlx::Error> for AppErr {
     fn from(value: sqlx::Error) -> Self {
-        let debug = format!("[{}]: {value:#?}", value.to_string());
+        let debug = format!("[{value}]: {value:#?}");
         match value {
             sqlx::Error::RowNotFound => Self { worm: Worm::NotFound, debug },
             _ => Self { worm: Worm::Sqlx(value), debug },
@@ -50,7 +50,7 @@ impl From<Box<dyn std::error::Error + Send + Sync>> for AppErr {
     fn from(value: Box<dyn std::error::Error + Send + Sync>) -> Self {
         Self {
             worm: Worm::Unknown,
-            debug: format!("[{}]: {value:#?}", value.to_string()),
+            debug: format!("[{value}]: {value:#?}"),
         }
     }
 }
