@@ -205,6 +205,7 @@ impl Payam {
         let mx = self.s.bot.forward_message(d, cid, mid).await?;
         // let mx = self.s.bot.copy_message(d, cid, mid).await?;
         self.s.settings.vip_msg = Some(mx.id.0 as i64);
+        self.s.settings.vip_views = 0;
         self.s.settings.set(&self.s.ctx.db).await?;
         self.s.send_menu().await?;
         Ok(())
