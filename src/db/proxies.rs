@@ -91,11 +91,17 @@ impl Proxy {
         Ok(res)
     }
 
-    pub async fn count(ctx: &Ctx) -> Result<u32, AppErr> {
-        let count = sqlx::query!("select COUNT(1) as count from proxies")
-            .fetch_one(&ctx.db)
-            .await?;
-        Ok(count.count as u32)
+    pub async fn count(ctx: &Ctx) -> Result<(u32, u32), AppErr> {
+        let count = sqlx::query!(
+            "select
+                COUNT(1) as total,
+                SUM(NOT disabled) as active
+            from proxies"
+        )
+        .fetch_one(&ctx.db)
+        .await?;
+
+        Ok((count.total as u32, count.active.unwrap_or_default() as u32))
     }
 
     pub async fn add(&mut self, ctx: &Ctx) -> Result<(), AppErr> {
@@ -199,10 +205,11 @@ impl Proxy {
             px.dn_votes += 1;
         }
 
-        if px.up_votes + px.dn_votes > 100 {
+        if px.up_votes + px.dn_votes > 25 {
             let (_, dnp) = px.up_dn_pct();
             if dnp > 60 {
-                px.disabled = true;
+                return Self::del(ctx, px.id).await;
+                // px.disabled = true;
             }
         }
 

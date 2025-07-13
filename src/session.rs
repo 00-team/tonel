@@ -229,8 +229,16 @@ impl Session {
             return Ok(());
         }
 
+        let m = indoc::indoc!(
+            "🛡 لطفاً به این پروکسی رأی بدید:
+            👍 فعال بود و کار کرد؟ لایک کن
+            👎 کار نکرد یا قطع بود؟ دیسلایک کن
+            
+            ✅ رأی درست شما تعیین می‌کنه این پروکسی تو ربات بمونه یا حذف شه!"
+        );
+
         self.bot
-            .send_message(self.cid, "به این پروکسی رای دهید")
+            .send_message(self.cid, m)
             .reply_markup(InlineKeyboardMarkup::new([
                 [
                     InlineKeyboardButton::callback(
@@ -252,7 +260,10 @@ impl Session {
     pub async fn get_v2ray(&mut self) -> HR {
         let cost = self.karbar.calc_cost(self.settings.v2ray_cost);
         if self.karbar.points < cost {
-            self.notify_no_points("شما امتیاز کافی برای دریافت v2ray ندارید 🐧").await?;
+            self.notify_no_points(
+                "شما امتیاز کافی برای دریافت v2ray ندارید 🐧",
+            )
+            .await?;
             return Ok(());
         }
 
@@ -327,8 +338,16 @@ impl Session {
             [KeyData::main_menu_btn(), KeyData::donate_btn()],
         ];
 
+        let m = indoc::indoc!(
+            "📡 لطفاً به این کانفیگ V2Ray رأی بدید:
+            👍 فعال بود و کار کرد؟ لایک کن
+            👎 کار نکرد یا قطع بود؟ دیسلایک کن
+            
+            ✅ رأی درست شما تعیین می‌کنه این کانفیگ تو ربات بمونه یا حذف شه!"
+        );
+
         self.bot
-            .send_message(self.cid, "به این کانفیگ v2ray رای دهید")
+            .send_message(self.cid, m)
             .reply_markup(InlineKeyboardMarkup::new(kb))
             .await?;
 

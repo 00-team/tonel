@@ -5,10 +5,10 @@ use super::*;
 impl Cbq {
     pub async fn admin_v2ray_list(&self, page: u32) -> HR {
         let proxies = V2ray::list(&self.s.ctx, page).await?;
-        let count = V2ray::count(&self.s.ctx).await?;
-        let bk = Book::new(proxies, page, count / 32);
+        let (total, active) = V2ray::count(&self.s.ctx).await?;
+        let bk = Book::new(proxies, page, total / 32);
         let msg = format!(
-            "V2ray List Page\npage: {page} | total: {count}\n\n{}",
+            "V2ray List Page\npage: {page} | total: {total} | active: {active}\n\n{}",
             &bk.message()
         );
 

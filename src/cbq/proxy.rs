@@ -3,10 +3,10 @@ use super::*;
 impl Cbq {
     pub async fn admin_proxy_list(&self, page: u32) -> HR {
         let proxies = Proxy::list(&self.s.ctx, page).await?;
-        let count = Proxy::count(&self.s.ctx).await?;
-        let bk = Book::new(proxies, page, count / 32);
+        let (total, active) = Proxy::count(&self.s.ctx).await?;
+        let bk = Book::new(proxies, page, total / 32);
         let msg = format!(
-            "Proxy List Page\npage: {page} | total: {count}\n\n{}",
+            "Proxy List Page\npage: {page} | total: {total} | active: {active}\n\n{}",
             &bk.message()
         );
 

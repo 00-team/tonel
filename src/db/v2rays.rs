@@ -64,11 +64,17 @@ impl V2ray {
         .await?)
     }
 
-    pub async fn count(ctx: &Ctx) -> Result<u32, AppErr> {
-        let count = sqlx::query!("select COUNT(1) as count from v2rays")
-            .fetch_one(&ctx.db)
-            .await?;
-        Ok(count.count as u32)
+    pub async fn count(ctx: &Ctx) -> Result<(u32, u32), AppErr> {
+        let count = sqlx::query!(
+            "select
+                COUNT(1) as total,
+                SUM(NOT disabled) as active
+            from v2rays"
+        )
+        .fetch_one(&ctx.db)
+        .await?;
+
+        Ok((count.total as u32, count.active.unwrap_or_default() as u32))
     }
 
     pub async fn add(&mut self, ctx: &Ctx) -> Result<(), AppErr> {
@@ -172,10 +178,11 @@ impl V2ray {
             v2.dn_votes += 1;
         }
 
-        if v2.up_votes + v2.dn_votes > 100 {
+        if v2.up_votes + v2.dn_votes > 25 {
             let (_, dnp) = v2.up_dn_pct();
             if dnp > 60 {
-                v2.disabled = true;
+                return Self::del(ctx, v2.id).await;
+                // v2.disabled = true;
             }
         }
 
