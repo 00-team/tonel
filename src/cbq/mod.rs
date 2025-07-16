@@ -28,7 +28,7 @@ pub struct Cbq {
 
 impl Cbq {
     pub async fn del_msg(&self) -> HR {
-        self.s.bot.delete_message(self.s.cid, self.mid).await?;
+        // self.s.bot.delete_message(self.s.cid, self.mid).await?;
         Ok(())
     }
 
