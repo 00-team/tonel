@@ -23,7 +23,7 @@ mod v2ray;
 pub struct Cbq {
     key: KeyData,
     s: Session,
-    mid: MessageId,
+    // mid: MessageId,
 }
 
 impl Cbq {
@@ -205,6 +205,10 @@ impl Cbq {
                 Proxy::votes_reset(&self.s.ctx, id).await?;
                 self.admin_proxy_list(page).await?;
             }
+            Ag::ProxyDeleteAllConfirm => {
+                Proxy::del_all(&self.s.ctx).await?;
+                self.s.send_menu().await?;
+            }
             Ag::V2rayDel(page, id) => {
                 V2ray::del(&self.s.ctx, id).await?;
                 self.admin_v2ray_list(page).await?;
@@ -216,6 +220,10 @@ impl Cbq {
             Ag::V2rayVotesReset(page, id) => {
                 V2ray::votes_reset(&self.s.ctx, id).await?;
                 self.admin_v2ray_list(page).await?;
+            }
+            Ag::V2rayDeleteAllConfirm => {
+                V2ray::del_all(&self.s.ctx).await?;
+                self.s.send_menu().await?;
             }
             Ag::FlyerSetMaxViews(_page, id) => {
                 let msg = concat!(
@@ -255,6 +263,10 @@ impl Cbq {
                 flyer.set(&self.s.ctx).await?;
                 self.admin_flyer_list(page).await?;
             }
+            Ag::FlyerDeleteAllConfirm => {
+                Flyer::del_all(&self.s.ctx).await?;
+                self.s.send_menu().await?;
+            }
             Ag::SetVipMaxViews => {
                 let msg = indoc::formatdoc!(
                     "حداکثر بازدید پیام VIP: {}
@@ -265,6 +277,7 @@ impl Cbq {
                 );
                 self.set_settings(msg, State::AdminSetVipMaxViews).await?;
             }
+
             Ag::SetVipCost => {
                 let msg = indoc::formatdoc!(
                     "هزینه فعلی پیام VIP: {}
@@ -424,7 +437,7 @@ impl Cbq {
         let cid = msg.chat.id;
 
         let mut cbq = Self {
-            mid: msg.id,
+            // mid: msg.id,
             key,
             s: Session { bot, settings, cid, karbar, ctx, conf, now, store },
         };

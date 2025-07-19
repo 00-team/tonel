@@ -108,6 +108,24 @@ impl super::Cbq {
             KeyData::BookPagination(page) => {
                 self.admin_flyer_list(page).await?;
             }
+            KeyData::BookDeleteAll => {
+                let m = concat!(
+                    "آیا از حذف تمامی تبلیغات اتمینان کامل دارید ❓❓❓\n\n",
+                    "این عملیات غیر قابل بازگشت است ⚠⚠⚠"
+                );
+
+                let kyb = InlineKeyboardMarkup::new([[
+                    KeyData::main_menu_btn(),
+                    InlineKeyboardButton::callback(
+                        "⭕ حذف همه ⭕",
+                        kd!(ag, Ag::FlyerDeleteAllConfirm),
+                    ),
+                    KeyData::main_menu_btn(),
+                ]]);
+
+                let cid = self.s.cid;
+                self.s.bot.send_message(cid, m).reply_markup(kyb).await?;
+            }
             _ => return Ok(false),
         }
 

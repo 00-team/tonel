@@ -27,6 +27,7 @@ pub enum KeyData {
     BookPagination(u32),
     BookItem(u32, i64),
     BookAdd,
+    BookDeleteAll,
 }
 
 pub mod keyboard {
@@ -54,11 +55,13 @@ pub enum AdminGlobal {
     ProxyDel(u32, i64),
     ProxyVotesReset(u32, i64),
     ProxyDisabledToggle(u32, i64),
+    ProxyDeleteAllConfirm,
 
     V2rayList,
     V2rayDel(u32, i64),
     V2rayVotesReset(u32, i64),
     V2rayDisabledToggle(u32, i64),
+    V2rayDeleteAllConfirm,
 
     SetDailyPt,
     SetInvitPt,
@@ -76,6 +79,7 @@ pub enum AdminGlobal {
     FlyerSetMaxViews(u32, i64),
     FlyerSetLink(u32, i64),
     FlyerDelLink(u32, i64),
+    FlyerDeleteAllConfirm,
 }
 
 macro_rules! kd {

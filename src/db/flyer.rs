@@ -105,6 +105,11 @@ impl Flyer {
         Ok(())
     }
 
+    pub async fn del_all(ctx: &Ctx) -> Result<(), AppErr> {
+        sqlx::query!("delete from flyers").execute(&ctx.db).await?;
+        Ok(())
+    }
+
     pub async fn set(&mut self, ctx: &Ctx) -> Result<(), AppErr> {
         if self.max_views > -1 && self.views >= self.max_views {
             self.disabled = true;

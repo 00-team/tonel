@@ -113,6 +113,11 @@ impl V2ray {
         Ok(())
     }
 
+    pub async fn del_all(ctx: &Ctx) -> Result<(), AppErr> {
+        sqlx::query!("delete from v2rays").execute(&ctx.db).await?;
+        Ok(())
+    }
+
     pub async fn disabled_toggle(ctx: &Ctx, id: i64) -> Result<(), AppErr> {
         sqlx::query!(
             "update v2rays set disabled = not disabled where id = ?",

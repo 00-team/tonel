@@ -69,7 +69,13 @@ impl<T: BookItem> Book<T> {
             layout.push(row);
         }
 
-        layout.push(vec![KeyData::main_menu_btn()]);
+        layout.push(vec![
+            KeyData::main_menu_btn(),
+            InlineKeyboardButton::callback(
+                "📛 حذف همه 📛",
+                KeyData::BookDeleteAll,
+            ),
+        ]);
 
         InlineKeyboardMarkup::new(layout)
     }
