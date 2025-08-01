@@ -40,12 +40,12 @@ impl Session {
         let mut kyb1 = Vec::with_capacity(3);
         for px in pxs.iter() {
             let Ok(url) = reqwest::Url::from_str(&px.url()) else { continue };
-            kyb1.push(InlineKeyboardButton::url("اتصال", url));
+            kyb1.push(InlineKeyboardButton::url("connect", url));
         }
 
         let kyb2 = vec![
-            InlineKeyboardButton::url("v2ray رایگان 🍓", su.clone()),
-            KeyData::donate_url(),
+            InlineKeyboardButton::url("v2ray 🍓", su.clone()),
+            // KeyData::donate_url(),
         ];
 
         let kb = InlineKeyboardMarkup::new([kyb1, kyb2]);
