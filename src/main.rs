@@ -61,6 +61,7 @@ async fn main() -> Result<(), AppErr> {
                 )
                 .endpoint(payam::Payam::handle),
         )
+        .branch(Update::filter_pre_checkout_query().endpoint(handle_pcq))
         .branch(
             Update::filter_callback_query()
                 .enter_dialogue::<Update, ErasedStorage<State>, State>()
@@ -166,5 +167,12 @@ pub async fn handle_commands(
         }
     }
 
+    Ok(())
+}
+
+pub async fn handle_pcq(bot: TB, ctx: Ctx, q: PreCheckoutQuery) -> HR {
+    Karbar::init(&ctx, &q.from, "").await?;
+    // store.update(State::Menu).await?;
+    bot.answer_pre_checkout_query(q.id, true).await?;
     Ok(())
 }

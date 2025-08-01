@@ -1,8 +1,7 @@
 /target
 Cargo.lock
 config.*.toml
-tonel.tx.db
-tonel.main.db
 .env
 proxy-list.txt
 v2ray-list.txt
+*.db

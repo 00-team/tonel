@@ -16,8 +16,10 @@ pub enum KeyData {
     GetVip,
     GetV2ray,
     MyInviteLinks,
-    GetDailyPoints,
-    GetRealDailyPoints,
+    StarPrices,
+    BuyStarPoints(u32),
+    GetFreePoints,
+    GetRealFreePoints,
     ProxyVote(i64, i8),
     V2rayVote(i64, i8),
     // admin global
@@ -34,10 +36,11 @@ pub mod keyboard {
     pub const GET_PROXY: &str = "پروکسی";
     pub const GET_VIP: &str = "کانفیگ VIP 🍓";
     pub const GET_V2RAY: &str = "V2ray";
-    pub const DAILY_PONT: &str = "امتیاز روزانه 🍅";
+    pub const FREE_PONT: &str = "امتیاز رایگان 🍅";
     pub const INVITE: &str = "دعوت دوستان";
     pub const MENU: &str = "منو";
     pub const DONATE: &str = "حمایت مالی 💰";
+    pub const BUY_STAR_POINT: &str = "خرید امتیاز با استار ⭐";
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize, Clone, Copy)]
@@ -63,7 +66,9 @@ pub enum AdminGlobal {
     V2rayDisabledToggle(u32, i64),
     V2rayDeleteAllConfirm,
 
-    SetDailyPt,
+    SetFreePt,
+    SetFreePtDelay,
+    SetStarPricePt,
     SetInvitPt,
     SetProxyCost,
     SetV2rayCost,
@@ -72,12 +77,15 @@ pub enum AdminGlobal {
     SetVipMsg,
     SetDonateMsg,
 
+    GetGift,
+
     FlyerList,
     FlyerDel(u32, i64),
     FlyerViewsReset(u32, i64),
     FlyerDisabledToggle(u32, i64),
     FlyerSetMaxViews(u32, i64),
     FlyerSetLink(u32, i64),
+    FlyerSetLabel(u32, i64),
     FlyerDelLink(u32, i64),
     FlyerDeleteAllConfirm,
 }
@@ -157,8 +165,11 @@ pub enum State {
     },
     AdminFlyerSetMaxView(i64),
     AdminFlyerSetLink(i64),
+    AdminFlyerSetLabel(i64),
 
-    AdminSetDailyPt,
+    AdminSetStarPricePt,
+    AdminSetFreePt,
+    AdminSetFreePtDelay,
     AdminSetInvitPt,
     AdminSetProxyCost,
     AdminSetV2rayCost,

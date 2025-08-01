@@ -118,11 +118,13 @@ impl Flyer {
         sqlx::query!(
             "update flyers set
             disabled = ?,
+            label = ?,
             views = ?,
             link = ?,
             max_views = ?
             where id = ?",
             self.disabled,
+            self.label,
             self.views,
             self.link,
             self.max_views,

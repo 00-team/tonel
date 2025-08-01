@@ -16,7 +16,7 @@ pub struct Karbar {
     pub created_at: i64,
     pub updated_at: i64,
     pub points: i64,
-    pub last_daily_point_at: i64,
+    pub last_free_point_at: i64,
     pub invite_code: String,
     pub blocked: bool,
     pub last_request: i64,
@@ -26,6 +26,10 @@ pub struct Karbar {
 impl Karbar {
     pub const fn cid(&self) -> ChatId {
         ChatId(self.tid)
+    }
+
+    pub const fn uid(&self) -> UserId {
+        UserId(self.tid as u64)
     }
 
     pub fn is_admin(&self) -> bool {
@@ -109,7 +113,7 @@ impl Karbar {
                 updated_at,
                 created_at: updated_at,
                 points: 0,
-                last_daily_point_at: 0,
+                last_free_point_at: 0,
                 invite_code: code,
                 last_request: 0,
                 price_stack: 0,
@@ -139,7 +143,7 @@ impl Karbar {
             created_at = ?,
             updated_at = ?,
             points = ?,
-            last_daily_point_at = ?,
+            last_free_point_at = ?,
             last_request = ?,
             price_stack = ?
             where tid = ?
@@ -151,7 +155,7 @@ impl Karbar {
             self.created_at,
             self.updated_at,
             self.points,
-            self.last_daily_point_at,
+            self.last_free_point_at,
             self.last_request,
             self.price_stack,
             self.tid

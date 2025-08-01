@@ -72,8 +72,8 @@ impl Session {
         let kb = InlineKeyboardMarkup::new([
             vec![KeyData::main_menu_btn(), KeyData::donate_btn()],
             vec![InlineKeyboardButton::callback(
-                "دریافت امتیاز روزانه 🍅",
-                KeyData::GetDailyPoints,
+                "دریافت امتیاز رایگان 🍅",
+                KeyData::GetFreePoints,
             )],
         ]);
         self.bot.send_message(self.cid, text).reply_markup(kb).await?;
@@ -387,10 +387,51 @@ impl Session {
         Ok(())
     }
 
-    pub async fn get_daily_point(&mut self) -> HR {
+    pub async fn buy_star_point(&mut self) -> HR {
+        let sp = self.settings.star_point_price as u32;
+        // let prices = [10u32].map(|star| {
+        //     // LabeledPrice::new(format!("{} امتیاز 🍅", star * sp), star)
+        //     LabeledPrice::new("lab", star)
+        // });
+
+        // const TITLE: &str = "خرید امتیاز  با استار ";
+
+        macro_rules!  btn {
+            ($star:literal) => {
+                InlineKeyboardButton::callback(
+                    format!("{} امتیاز 🍅 = {} استار ⭐", $star * sp, $star),
+                    KeyData::BuyStarPoints($star)
+                )
+            };
+        }
+
+        let kyb = InlineKeyboardMarkup::new([
+            [btn!(1), btn!(10)],
+            [btn!(15), btn!(20)],
+            [btn!(25), btn!(30)],
+            [btn!(35), btn!(40)],
+            [btn!(45), btn!(50)],
+        ]);
+
+        self.bot
+            .send_message(self.cid, "خرید امتیاز 🍅 با استار ⭐ تلگرام")
+            .reply_markup(kyb)
+            .await?;
+
+        // self.bot
+        //     .send_invoice(self.cid, TITLE, "توضیحات؟", "p", "XTR", prices)
+        //     // .suggested_tip_amounts([3u32, 7u32])
+        //     // .max_tip_amount(10)
+        //     .start_parameter("hi")
+        //     .await?;
+
+        Ok(())
+    }
+
+    pub async fn get_free_point(&mut self) -> HR {
         let kb = InlineKeyboardMarkup::new([[InlineKeyboardButton::callback(
             "دریافت امتیاز 🍅",
-            KeyData::GetRealDailyPoints,
+            KeyData::GetRealFreePoints,
         )]]);
         let sent = 'a: {
             let Some(mut flyer) = Flyer::get_good(&self.ctx).await else {
@@ -414,16 +455,16 @@ impl Session {
         };
 
         if !sent {
-            self.get_real_daily_point().await?;
+            self.get_real_free_point().await?;
         }
 
         Ok(())
     }
 
-    pub async fn get_real_daily_point(&mut self) -> HR {
-        let rem = self.now - self.karbar.last_daily_point_at;
-        if rem < Config::DAILY_POINTS_DELAY {
-            let wait = Config::DAILY_POINTS_DELAY - rem;
+    pub async fn get_real_free_point(&mut self) -> HR {
+        let rem = self.now - self.karbar.last_free_point_at;
+        if rem < self.settings.free_point_delay {
+            let wait = self.settings.free_point_delay - rem;
             let (wm, wt) = if wait > 3600 {
                 ("ساعت", wait / 3600)
             } else if wait > 60 {
@@ -431,9 +472,8 @@ impl Session {
             } else {
                 ("ثانیه", wait)
             };
-            let msg = format!(
-                "{wt} {wm} تا دریافت امتیاز روزانه دیگر باقی مانده است ⏳"
-            );
+            let msg =
+                format!("{wt} {wm} تا دریافت امتیاز رایگان باقی مانده است ⏳");
             self.bot
                 .send_message(self.cid, msg)
                 .reply_markup(KeyData::main_menu())
@@ -442,14 +482,14 @@ impl Session {
             return Ok(());
         }
 
-        self.karbar.points += self.settings.daily_points;
-        self.karbar.last_daily_point_at = self.now;
+        self.karbar.points += self.settings.free_points;
+        self.karbar.last_free_point_at = self.now;
         self.karbar.set(&self.ctx).await?;
 
         let msg = indoc::formatdoc!(
             "{} امتیاز به حساب شما اضافه شد! 🎉
             امتیاز فعلی شما: {} 🍅",
-            self.settings.daily_points,
+            self.settings.free_points,
             self.karbar.points
         );
 
@@ -467,15 +507,15 @@ impl Session {
 
             🍅 امتیاز شما: {}
 
-            👥 با دعوت از دوستان و دریافت امتیاز روزانه، امتیاز بیشتری دریافت کن!"#,
+            👥 با دعوت از دوستان و دریافت امتیاز رایگان، امتیاز بیشتری دریافت کن!"#,
             self.karbar.points,
         );
 
         let mut ikb = vec![
             vec![
                 InlineKeyboardButton::callback(
-                    "امتیاز روزانه 🍅",
-                    KeyData::GetDailyPoints,
+                    "امتیاز رایگان 🍅",
+                    KeyData::GetFreePoints,
                 ),
                 InlineKeyboardButton::callback(
                     "کانفیگ VIP 💎",
@@ -493,6 +533,10 @@ impl Session {
                 ),
                 KeyData::donate_btn(),
             ],
+            vec![InlineKeyboardButton::callback(
+                "خرید امتیاز با استار ⭐",
+                KeyData::StarPrices,
+            )],
         ];
 
         if self.karbar.is_admin() {
@@ -500,6 +544,10 @@ impl Session {
                 InlineKeyboardButton::callback(
                     "👇 منوی ادمین 👇",
                     KeyData::Unknown,
+                ),
+                InlineKeyboardButton::callback(
+                    "دریافت هدیه 🎁",
+                    kd!(gg, GetGift),
                 ),
                 InlineKeyboardButton::callback("کاربر 🔍", kd!(gg, KarbarFind)),
             ]);
@@ -550,11 +598,14 @@ impl Session {
                 KeyboardButton::new(keyboard::GET_VIP),
             ],
             vec![
-                KeyboardButton::new(keyboard::DAILY_PONT),
+                KeyboardButton::new(keyboard::FREE_PONT),
                 KeyboardButton::new(keyboard::INVITE),
                 KeyboardButton::new(keyboard::MENU),
             ],
-            vec![KeyboardButton::new(keyboard::DONATE)],
+            vec![
+                KeyboardButton::new(keyboard::DONATE),
+                KeyboardButton::new(keyboard::BUY_STAR_POINT),
+            ],
         ];
 
         let kyb = KeyboardMarkup::new(kkb).resize_keyboard();

@@ -37,6 +37,31 @@ impl Payam {
             msg,
         };
 
+        if let Some(sp) = payam.msg.successful_payment() {
+            let sspp = payam.s.settings.star_point_price as u32;
+            let added_points = sspp as u32 * sp.total_amount;
+            payam.s.karbar.points += added_points as i64;
+            payam.s.karbar.set(&payam.s.ctx).await?;
+
+            let msg = indoc::formatdoc!(
+                "از خرید شما سپاس گزاریم 🫠
+                
+                {} امتیاز به حساب شما اضافه شد! 🎉
+                امتیاز فعلی شما: {} 🍅",
+                added_points,
+                payam.s.karbar.points
+            );
+
+            payam
+                .s
+                .bot
+                .send_message(payam.s.cid, msg)
+                .reply_markup(KeyData::main_menu())
+                .await?;
+
+            return Ok(());
+        }
+
         payam.s.ch_send().await?;
 
         if is_admin && payam.handle_admin().await? {
@@ -50,10 +75,11 @@ impl Payam {
         match txt {
             keyboard::GET_VIP => payam.s.get_vip().await?,
             keyboard::INVITE => payam.s.get_invite().await?,
-            keyboard::DAILY_PONT => payam.s.get_daily_point().await?,
+            keyboard::FREE_PONT => payam.s.get_free_point().await?,
             keyboard::GET_V2RAY => payam.s.get_v2ray().await?,
             keyboard::GET_PROXY => payam.s.get_proxy().await?,
             keyboard::MENU => payam.s.send_menu().await?,
+            keyboard::BUY_STAR_POINT => payam.s.buy_star_point().await?,
             keyboard::DONATE => payam.s.donate().await?,
             _ => {}
         }
@@ -94,10 +120,12 @@ impl Payam {
             State::AdminSetDonateMsg => self.admin_set_donate_msg().await?,
             State::AdminFindKarbar => self.admin_find_karbar().await?,
             State::AdminSetVipCost => set_int!(vip_cost),
+            State::AdminSetStarPricePt => set_int!(star_point_price),
             State::AdminSetProxyCost => set_int!(proxy_cost),
             State::AdminSetV2rayCost => set_int!(v2ray_cost),
             State::AdminSetInvitPt => set_int!(invite_points),
-            State::AdminSetDailyPt => set_int!(daily_points),
+            State::AdminSetFreePt => set_int!(free_points),
+            State::AdminSetFreePtDelay => set_int!(free_point_delay),
             State::AdminSetVipMaxViews => set_int!(vip_max_views),
             State::AdminKarbarSetPoints(kid) => {
                 let Some(mv) = self.gn::<i64>().await? else {
@@ -121,6 +149,17 @@ impl Payam {
                 flyer.max_views = mv.max(-1);
                 flyer.set(&self.s.ctx).await?;
                 self.s.notify("حداکثر بازدید ثبت شد ✅").await?;
+                self.s.store.update(State::Menu).await?;
+            }
+            State::AdminFlyerSetLabel(id) => {
+                let Some(txt) = self.msg.text() else {
+                    self.s.notify("پیام متنی ندارد ❌").await?;
+                    return Ok(true);
+                };
+                let mut flyer = Flyer::get(&self.s.ctx, *id).await?;
+                flyer.label = txt.to_string();
+                flyer.set(&self.s.ctx).await?;
+                self.s.notify("عنوان ثبت شد ✅").await?;
                 self.s.store.update(State::Menu).await?;
             }
             State::AdminFlyerSetLink(id) => {

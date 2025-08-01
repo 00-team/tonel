@@ -7,7 +7,9 @@ pub struct Settings {
     #[allow(dead_code)]
     id: i64,
     pub invite_points: i64,
-    pub daily_points: i64,
+    pub star_point_price: i64,
+    pub free_point_delay: i64,
+    pub free_points: i64,
     pub proxy_cost: i64,
     pub v2ray_cost: i64,
     pub vip_cost: i64,
@@ -16,6 +18,7 @@ pub struct Settings {
     pub vip_msg: Option<i64>,
     pub donate_msg: Option<i64>,
     pub ch_last_sent: i64,
+    pub total_stars: i64,
 }
 
 impl Default for Settings {
@@ -23,7 +26,9 @@ impl Default for Settings {
         Self {
             id: 1,
             invite_points: 100,
-            daily_points: 100,
+            star_point_price: 2,
+            free_point_delay: 43200,
+            free_points: 100,
             proxy_cost: 100,
             v2ray_cost: 100,
             vip_cost: 200,
@@ -32,6 +37,7 @@ impl Default for Settings {
             vip_max_views: 100,
             donate_msg: None,
             ch_last_sent: 0,
+            total_stars: 0,
         }
     }
 }
@@ -74,7 +80,7 @@ impl Settings {
         sqlx::query! {"
             update settings set 
             invite_points = ?,
-            daily_points = ?,
+            free_points = ?,
             proxy_cost = ?,
             v2ray_cost = ?,
             vip_cost = ?,
@@ -82,11 +88,14 @@ impl Settings {
             vip_views = ?,
             vip_max_views = ?,
             donate_msg = ?,
-            ch_last_sent = ?
+            ch_last_sent = ?,
+            free_point_delay = ?,
+            total_stars = ?,
+            star_point_price = ?
             where id = 1
         ",
             self.invite_points,
-            self.daily_points,
+            self.free_points,
             self.proxy_cost,
             self.v2ray_cost,
             self.vip_cost,
@@ -95,6 +104,9 @@ impl Settings {
             self.vip_max_views,
             self.donate_msg,
             self.ch_last_sent,
+            self.free_point_delay,
+            self.total_stars,
+            self.star_point_price
         }
         .execute(pool)
         .await?;

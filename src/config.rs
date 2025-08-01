@@ -86,8 +86,6 @@ pub struct Config {
 
 impl Config {
     /// 24 hours
-    pub const DAILY_POINTS_DELAY: i64 = 24 * 3600;
-    /// 24 hours
     pub const PRICE_STACK_RESET: i64 = 24 * 3600;
     pub const CODE_ABC: &[u8] =
         b"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";

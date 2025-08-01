@@ -68,30 +68,35 @@ impl super::Cbq {
                     ),
                 ];
 
-                let mut kyb2 = vec![InlineKeyboardButton::callback(
-                    "max views 🐝",
-                    kd!(ag, Ag::FlyerSetMaxViews(page, flyer.id)),
-                )];
-
-                if flyer.link.is_some() {
-                    kyb2.push(InlineKeyboardButton::callback(
-                        "حذف لینک ⭕",
-                        kd!(ag, Ag::FlyerDelLink(page, flyer.id)),
-                    ));
-                } else {
-                    kyb2.push(InlineKeyboardButton::callback(
+                let kyb2 = vec![
+                    InlineKeyboardButton::callback(
+                        "max views 🐝",
+                        kd!(ag, Ag::FlyerSetMaxViews(page, flyer.id)),
+                    ),
+                    InlineKeyboardButton::callback(
+                        "عنوان 🏷️",
+                        kd!(ag, Ag::FlyerSetLabel(page, flyer.id)),
+                    ),
+                    InlineKeyboardButton::callback(
                         "ثبت لینک 🔗",
                         kd!(ag, Ag::FlyerSetLink(page, flyer.id)),
-                    ));
-                }
+                    ),
+                ];
 
-                let kyb3 = vec![
+                let mut kyb3 = vec![
                     InlineKeyboardButton::callback(
                         "بازگشت ⬅️",
                         KeyData::BookPagination(page),
                     ),
                     KeyData::main_menu_btn(),
                 ];
+
+                if flyer.link.is_some() {
+                    kyb3.push(InlineKeyboardButton::callback(
+                        "حذف لینک ⭕",
+                        kd!(ag, Ag::FlyerDelLink(page, flyer.id)),
+                    ));
+                }
 
                 let kb = InlineKeyboardMarkup::new([kyb1, kyb2, kyb3]);
 
