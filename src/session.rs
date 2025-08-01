@@ -389,14 +389,8 @@ impl Session {
 
     pub async fn buy_star_point(&mut self) -> HR {
         let sp = self.settings.star_point_price as u32;
-        // let prices = [10u32].map(|star| {
-        //     // LabeledPrice::new(format!("{} امتیاز 🍅", star * sp), star)
-        //     LabeledPrice::new("lab", star)
-        // });
 
-        // const TITLE: &str = "خرید امتیاز  با استار ";
-
-        macro_rules!  btn {
+        macro_rules! btn {
             ($star:literal) => {
                 InlineKeyboardButton::callback(
                     format!("{} امتیاز 🍅 = {} استار ⭐", $star * sp, $star),
@@ -406,7 +400,7 @@ impl Session {
         }
 
         let kyb = InlineKeyboardMarkup::new([
-            [btn!(1), btn!(10)],
+            [btn!(5), btn!(10)],
             [btn!(15), btn!(20)],
             [btn!(25), btn!(30)],
             [btn!(35), btn!(40)],
@@ -417,13 +411,6 @@ impl Session {
             .send_message(self.cid, "خرید امتیاز 🍅 با استار ⭐ تلگرام")
             .reply_markup(kyb)
             .await?;
-
-        // self.bot
-        //     .send_invoice(self.cid, TITLE, "توضیحات؟", "p", "XTR", prices)
-        //     // .suggested_tip_amounts([3u32, 7u32])
-        //     // .max_tip_amount(10)
-        //     .start_parameter("hi")
-        //     .await?;
 
         Ok(())
     }
