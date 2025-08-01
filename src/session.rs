@@ -545,10 +545,6 @@ impl Session {
                     "👇 منوی ادمین 👇",
                     KeyData::Unknown,
                 ),
-                InlineKeyboardButton::callback(
-                    "دریافت هدیه 🎁",
-                    kd!(gg, GetGift),
-                ),
                 InlineKeyboardButton::callback("کاربر 🔍", kd!(gg, KarbarFind)),
             ]);
             ikb.push(vec![

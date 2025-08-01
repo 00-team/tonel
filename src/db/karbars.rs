@@ -34,7 +34,7 @@ impl Karbar {
 
     pub fn is_admin(&self) -> bool {
         let conf = Config::get();
-        conf.admins.contains(&UserId(self.tid as u64))
+        conf.admins.contains(&self.uid())
     }
 
     pub async fn find_with_tid(ctx: &Ctx, tid: i64) -> Option<Self> {

@@ -372,9 +372,6 @@ impl super::Cbq {
                         .await;
                 });
             }
-            Ag::GetGift => {
-                self.s.bot.send_message(self.s.cid, "بعدا 😂").await?;
-            }
         }
 
         Ok(true)

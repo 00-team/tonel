@@ -77,8 +77,6 @@ pub enum AdminGlobal {
     SetVipMsg,
     SetDonateMsg,
 
-    GetGift,
-
     FlyerList,
     FlyerDel(u32, i64),
     FlyerViewsReset(u32, i64),
