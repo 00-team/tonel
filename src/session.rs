@@ -416,10 +416,10 @@ impl Session {
     }
 
     pub async fn get_free_point(&mut self) -> HR {
-        let kb = InlineKeyboardMarkup::new([[InlineKeyboardButton::callback(
+        let kyb1 = [InlineKeyboardButton::callback(
             "دریافت امتیاز 🍅",
             KeyData::GetRealFreePoints,
-        )]]);
+        )];
         let sent = 'a: {
             let Some(mut flyer) = Flyer::get_good(&self.ctx).await else {
                 break 'a false;
@@ -427,6 +427,14 @@ impl Session {
             let m = MessageId(flyer.mid as i32);
             let (d, c) = (self.conf.dev, self.cid);
 
+            let mut krs = vec![kyb1];
+
+            let u = flyer.link.clone();
+            if let Some(lk) = u.and_then(|v| reqwest::Url::from_str(&v).ok()) {
+                krs.push([InlineKeyboardButton::url(&flyer.label, lk)]);
+            }
+
+            let kb = InlineKeyboardMarkup::new(krs);
             let r = self.bot.copy_message(c, d, m).reply_markup(kb);
 
             if r.await.is_err() {
