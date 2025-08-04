@@ -233,6 +233,7 @@ pub struct KarbarStats {
     pub blocked: i64,
     pub active_5h: i64,
     pub active_7d: i64,
+    pub total_points: i64,
 }
 
 impl KarbarStats {
@@ -258,7 +259,8 @@ impl KarbarStats {
                 COUNT(1) as total,
                 SUM(blocked) as blocked,
                 SUM(updated_at > ?) as active_5h,
-                SUM(updated_at > ?) as active_7d
+                SUM(updated_at > ?) as active_7d,
+                SUM(points) as total_points
             from karbars", p5h, p7d
         }
         .fetch_one(&ctx.db)
@@ -269,6 +271,7 @@ impl KarbarStats {
             blocked: count.blocked.unwrap_or(-1),
             active_5h: count.active_5h.unwrap_or(-1),
             active_7d: count.active_7d.unwrap_or(-1),
+            total_points: count.total_points.unwrap_or(-1),
         })
     }
 }

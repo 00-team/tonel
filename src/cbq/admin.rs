@@ -41,21 +41,26 @@ impl super::Cbq {
             Ag::SendAll => {
                 let stats = KarbarStats::get(&self.s.ctx).await;
                 let stats = stats.unwrap_or_default();
-                let msg = indoc::formatdoc!(
+                let avg_point = if stats.total > 0 && stats.total_points > 0 {
+                    stats.total_points as f64 / stats.total as f64
+                } else {
+                    -1.0
+                };
+                let msg = indoc::formatdoc! {
                     "ارسال همهگانی 🧆
 
                     تعداد کاربران: {}
                     تعداد کاربرانی که بات را بلاک کرده اند: {}
                     تعداد کاربران فعال در ۵ ساعت گذشته: {}
                     تعداد کاربران فعال در ۷ روز گذشته: {}
+                    جمع امتیاز: {}
+                    میانگین امتیاز هر کاربر: {avg_point}
 
                     پیام خود را ارسال کنید:
                 ",
-                    stats.total,
-                    stats.blocked,
-                    stats.active_5h,
-                    stats.active_7d
-                );
+                    stats.total, stats.blocked, stats.active_5h,
+                    stats.active_7d, stats.total_points,
+                };
                 self.s.store.update(State::AdminSendAll).await?;
                 self.s.notify(&msg).await?;
             }
