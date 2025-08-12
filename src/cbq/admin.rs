@@ -4,9 +4,15 @@ impl super::Cbq {
     pub async fn handle_admin(&self, ag: Ag) -> Result<bool, AppErr> {
         match ag {
             Ag::ForceJoinList => {
+                let mut kyb = Vec::with_capacity(self.s.conf.force_join.len());
+                for (_, title, url) in self.s.conf.force_join.iter() {
+                    kyb.push([InlineKeyboardButton::url(title, url.clone())]);
+                }
+
                 self.s
                     .bot
                     .send_message(self.s.cid, "admin force join list")
+                    .reply_markup(InlineKeyboardMarkup::new(kyb))
                     .await?;
             }
             Ag::KarbarFind => {
