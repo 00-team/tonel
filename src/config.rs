@@ -37,9 +37,17 @@ mod config_toml {
     }
 
     #[derive(Debug, serde::Deserialize)]
+    pub struct ForceJoin {
+        pub id: i64,
+        pub title: String,
+        pub url: String,
+    }
+
+    #[derive(Debug, serde::Deserialize)]
     pub struct ConfigToml {
         pub bot: Bot,
         pub db: Db,
+        pub force_join: Vec<ForceJoin>,
     }
 
     fn path() -> PathBuf {
@@ -76,6 +84,7 @@ pub struct Config {
     bot_storage: String,
     db_path: String,
     pub admins: HashSet<UserId>,
+    pub force_join: Vec<(ChatId, String, reqwest::Url)>,
     pub dev: UserId,
     pub start_url: reqwest::Url,
     pub donate_url: reqwest::Url,
@@ -98,6 +107,12 @@ impl Config {
         let du = format!("https://t.me/{}?start=donate", ct.bot.username);
         let donate_url = reqwest::Url::from_str(&du).expect("bad donate url");
 
+        let mut fj = Vec::with_capacity(ct.force_join.len());
+        for f in ct.force_join {
+            let Ok(url) = reqwest::Url::from_str(&f.url) else { continue };
+            fj.push((ChatId(f.id), f.title, url));
+        }
+
         Self {
             bot_token: ct.bot.token,
             bot_storage: ct.bot.storage,
@@ -108,6 +123,7 @@ impl Config {
             start_url,
             donate_url,
             channel: ChatId(ct.bot.channel),
+            force_join: fj,
         }
     }
 

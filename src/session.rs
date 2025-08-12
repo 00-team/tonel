@@ -2,6 +2,7 @@ use crate::{
     Ctx, HR, TB,
     config::Config,
     db::{Flyer, Karbar, Proxy, Settings, V2ray},
+    error::AppErr,
     state::{AdminGlobal as Ag, KeyData, State, Store, kd, keyboard},
 };
 use std::str::FromStr;
@@ -10,8 +11,8 @@ use teloxide::{
     prelude::Requester,
     sugar::request::RequestLinkPreviewExt,
     types::{
-        ChatId, InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton,
-        KeyboardMarkup, MessageId, ParseMode,
+        ChatId, ChatMemberKind, InlineKeyboardButton, InlineKeyboardMarkup,
+        KeyboardButton, KeyboardMarkup, MessageId, ParseMode,
     },
     utils::html::escape,
 };
@@ -28,6 +29,42 @@ pub struct Session {
 }
 
 impl Session {
+    pub async fn check_force_join(
+        &self, btn: InlineKeyboardButton,
+    ) -> Result<bool, AppErr> {
+        let mut ntj = Vec::with_capacity(self.conf.force_join.len());
+        for (cid, title, url) in self.conf.force_join.iter() {
+            let r = self.bot.get_chat_member(*cid, self.karbar.uid()).await;
+            let Ok(cm) = r else { continue };
+            if cm.kind != ChatMemberKind::Left {
+                continue;
+            }
+
+            ntj.push((title, url.clone()));
+        }
+
+        if ntj.is_empty() {
+            return Ok(false);
+        }
+
+        let mut kyb = Vec::with_capacity(ntj.len() + 1);
+
+        for (label, url) in ntj {
+            kyb.push([InlineKeyboardButton::url(label, url)]);
+        }
+
+        kyb.push([btn]);
+
+        let m = concat!("شما ابتدا باید عضو چنل های زیر شوید:");
+
+        self.bot
+            .send_message(self.cid, m)
+            .reply_markup(InlineKeyboardMarkup::new(kyb))
+            .await?;
+
+        Ok(true)
+    }
+
     pub async fn ch_send(&mut self) -> HR {
         if self.settings.ch_last_sent + 3 * 3600 > self.now {
             return Ok(());
@@ -110,6 +147,14 @@ impl Session {
     }
 
     pub async fn get_vip(&mut self) -> HR {
+        let cfj_btn = InlineKeyboardButton::callback(
+            "دریافت VIP بعد از عضویت ✅",
+            KeyData::GetVip,
+        );
+        if self.check_force_join(cfj_btn).await? {
+            return Ok(());
+        }
+
         let cost = self.karbar.calc_cost(self.settings.vip_cost);
         if self.karbar.points < cost {
             let m = indoc::indoc!(
@@ -155,6 +200,14 @@ impl Session {
     }
 
     pub async fn get_proxy(&mut self) -> HR {
+        let cfj_btn = InlineKeyboardButton::callback(
+            "دریافت پروکسی بعد از عضویت ✅",
+            KeyData::GetProxy,
+        );
+        if self.check_force_join(cfj_btn).await? {
+            return Ok(());
+        }
+
         let cost = self.karbar.calc_cost(self.settings.proxy_cost);
         if self.karbar.points < cost {
             self.notify_no_points(
@@ -258,6 +311,14 @@ impl Session {
     }
 
     pub async fn get_v2ray(&mut self) -> HR {
+        let cfj_btn = InlineKeyboardButton::callback(
+            "دریافت V2ray بعد از عضویت ✅",
+            KeyData::GetV2ray,
+        );
+        if self.check_force_join(cfj_btn).await? {
+            return Ok(());
+        }
+
         let cost = self.karbar.calc_cost(self.settings.v2ray_cost);
         if self.karbar.points < cost {
             self.notify_no_points(
