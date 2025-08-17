@@ -306,7 +306,7 @@ impl super::Cbq {
             }
             Ag::SetDonateMsg => {
                 let ex = "پیام جدید را ارسال کنید و یا به منوی اصلی بروید";
-                let Some(mid) = self.s.settings.vip_msg else {
+                let Some(mid) = self.s.settings.donate_msg else {
                     let m = format!(
                         "هیچ پیامی برای حمایت مالی تنظیم نشده 🍏\n\n{ex}"
                     );
