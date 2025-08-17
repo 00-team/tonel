@@ -461,11 +461,12 @@ impl Session {
         }
 
         let kyb = InlineKeyboardMarkup::new([
-            [btn!(5), btn!(10)],
-            [btn!(15), btn!(20)],
-            [btn!(25), btn!(30)],
-            [btn!(35), btn!(40)],
-            [btn!(45), btn!(50)],
+            vec![btn!(5), btn!(10)],
+            vec![btn!(15), btn!(20)],
+            vec![btn!(25), btn!(30)],
+            vec![btn!(35), btn!(40)],
+            vec![btn!(45), btn!(50)],
+            vec![KeyData::main_menu_btn()]
         ]);
 
         self.bot
