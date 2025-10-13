@@ -54,10 +54,10 @@ impl V2ray {
     }
 
     pub async fn list(ctx: &Ctx, page: u32) -> Result<Vec<Self>, AppErr> {
-        let offset = page * 32;
+        let offset = page * 10;
         Ok(sqlx::query_as!(
             Self,
-            "select * from v2rays limit 32 offset ?",
+            "select * from v2rays limit 10 offset ?",
             offset
         )
         .fetch_all(&ctx.db)
