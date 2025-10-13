@@ -1,4 +1,4 @@
-use crate::{Ctx, book::BookItem, error::AppErr};
+use crate::{book::BookItem, error::AppErr, utils::cut_off, Ctx};
 use std::{fmt::Display, str::FromStr};
 
 #[derive(Debug, sqlx::FromRow)]
@@ -31,15 +31,13 @@ impl V2ray {
         if link.is_empty() {
             return None;
         }
-        let label = if let Ok(url) = reqwest::Url::from_str(link) {
+        let mut label = if let Ok(url) = reqwest::Url::from_str(link) {
             url.host_str().unwrap_or("<no host>").to_string()
         } else {
-            let mut out = String::with_capacity(32);
-            for ch in link.chars().take(32) {
-                out.push(ch);
-            }
-            out
+            link.to_string()
         };
+
+        cut_off(&mut label, 32);
 
         let v2 = Self {
             id: 0,
@@ -54,10 +52,10 @@ impl V2ray {
     }
 
     pub async fn list(ctx: &Ctx, page: u32) -> Result<Vec<Self>, AppErr> {
-        let offset = page * 10;
+        let offset = page * 32;
         Ok(sqlx::query_as!(
             Self,
-            "select * from v2rays limit 10 offset ?",
+            "select * from v2rays limit 32 offset ?",
             offset
         )
         .fetch_all(&ctx.db)

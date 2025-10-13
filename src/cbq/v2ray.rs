@@ -6,7 +6,7 @@ impl Cbq {
     pub async fn admin_v2ray_list(&self, page: u32) -> HR {
         let proxies = V2ray::list(&self.s.ctx, page).await?;
         let (total, active) = V2ray::count(&self.s.ctx).await?;
-        let bk = Book::new(proxies, page, total / 10);
+        let bk = Book::new(proxies, page, total / 32);
         let msg = format!(
             "V2ray List Page\npage: {page} | total: {total} | active: {active}\n\n{}",
             &bk.message()

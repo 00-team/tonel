@@ -18,3 +18,14 @@ pub fn random_code() -> String {
     }
     out
 }
+
+pub fn cut_off(value: &mut String, len: usize) {
+    let mut idx = len;
+    loop {
+        if value.is_char_boundary(idx) {
+            break;
+        }
+        idx -= 1;
+    }
+    value.truncate(idx);
+}
