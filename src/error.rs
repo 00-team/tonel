@@ -12,6 +12,7 @@ pub enum Worm {
     TxRq(RequestError),
     Sqlx(sqlx::Error),
     Down(DownloadError),
+    Rqw(reqwest::Error),
 }
 
 #[derive(Debug)]
@@ -31,6 +32,15 @@ impl From<RequestError> for AppErr {
             _ => Worm::TxRq(value),
         };
         Self { debug, worm }
+    }
+}
+
+impl From<reqwest::Error> for AppErr {
+    fn from(value: reqwest::Error) -> Self {
+        Self {
+            debug: format!("reqwest error: {value:?}"),
+            worm: Worm::Rqw(value),
+        }
     }
 }
 

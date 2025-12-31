@@ -1,7 +1,9 @@
+use crate::db::v2ray_do_auto_update;
+
 use super::*;
 
 impl super::Cbq {
-    pub async fn handle_admin(&self, ag: Ag) -> Result<bool, AppErr> {
+    pub async fn handle_admin(&mut self, ag: Ag) -> Result<bool, AppErr> {
         match ag {
             Ag::ForceJoinList => {
                 let mut kyb = Vec::with_capacity(self.s.conf.force_join.len());
@@ -141,6 +143,29 @@ impl super::Cbq {
             Ag::ProxyDeleteAllConfirm => {
                 Proxy::del_all(&self.s.ctx).await?;
                 self.s.send_menu().await?;
+            }
+            Ag::V2rayAudoUpdate => {
+                match v2ray_do_auto_update(&mut self.s).await {
+                    Ok((total, added)) => {
+                        let m =
+                            format!("{added} از {total} کانفیگ به صورت خودکار ادد شد ✅");
+                        self.s
+                            .bot
+                            .send_message(self.s.cid, m)
+                            .reply_markup(KeyData::main_menu())
+                            .await?
+                    }
+                    Err(e) => {
+                        let m = format!(
+                            "اپدیت خودکار به خطا مواجع شد ❌\n\n{e:#?}"
+                        );
+                        self.s
+                            .bot
+                            .send_message(self.s.cid, m)
+                            .reply_markup(KeyData::main_menu())
+                            .await?
+                    }
+                };
             }
             Ag::V2rayDel(page, id) => {
                 V2ray::del(&self.s.ctx, id).await?;

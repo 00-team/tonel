@@ -91,6 +91,7 @@ pub struct Config {
     /// without @
     pub bot_username: String,
     pub channel: ChatId,
+    pub rc: reqwest::Client,
 }
 
 impl Config {
@@ -99,6 +100,8 @@ impl Config {
     pub const CODE_ABC: &[u8] =
         b"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     pub const SEND_ALL_SLEEP: Duration = Duration::from_secs(10);
+    pub const V2RAY_AUTO_UPDATE: i64 = 2 * 3600;
+    pub const V2RAY_AUTO_UPDATE_URL: &str = "https://raw.githubusercontent.com/XIXV2RAY/XIX-v2ray/refs/heads/main/VIP.txt";
 
     fn init() -> Self {
         let ct = config_toml::get();
@@ -124,6 +127,10 @@ impl Config {
             donate_url,
             channel: ChatId(ct.bot.channel),
             force_join: fj,
+            rc: reqwest::ClientBuilder::new()
+                .connection_verbose(false)
+                .build()
+                .expect("general rc"),
         }
     }
 

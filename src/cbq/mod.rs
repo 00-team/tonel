@@ -147,6 +147,7 @@ impl Cbq {
         };
 
         cbq.s.ch_send().await?;
+        crate::db::v2ray_auto_update(&mut cbq.s).await;
 
         if cbq.handle_global().await? {
             return Ok(());

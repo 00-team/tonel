@@ -19,6 +19,7 @@ pub struct Settings {
     pub donate_msg: Option<i64>,
     pub ch_last_sent: i64,
     pub total_stars: i64,
+    pub v2ray_last_auto_update: i64,
 }
 
 impl Default for Settings {
@@ -38,6 +39,7 @@ impl Default for Settings {
             donate_msg: None,
             ch_last_sent: 0,
             total_stars: 0,
+            v2ray_last_auto_update: 0,
         }
     }
 }
@@ -91,7 +93,8 @@ impl Settings {
             ch_last_sent = ?,
             free_point_delay = ?,
             total_stars = ?,
-            star_point_price = ?
+            star_point_price = ?,
+            v2ray_last_auto_update = ?
             where id = 1
         ",
             self.invite_points,
@@ -106,7 +109,8 @@ impl Settings {
             self.ch_last_sent,
             self.free_point_delay,
             self.total_stars,
-            self.star_point_price
+            self.star_point_price,
+            self.v2ray_last_auto_update
         }
         .execute(pool)
         .await?;

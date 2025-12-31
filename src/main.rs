@@ -26,7 +26,7 @@ mod state;
 mod utils;
 
 type HR = Result<(), AppErr>;
-type TB = Throttle<Bot>;
+pub type TB = Throttle<Bot>;
 
 #[derive(Debug, Clone)]
 pub struct Ctx {

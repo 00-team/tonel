@@ -60,6 +60,7 @@ pub enum AdminGlobal {
     ProxyDisabledToggle(u32, i64),
     ProxyDeleteAllConfirm,
 
+    V2rayAudoUpdate,
     V2rayList,
     V2rayDel(u32, i64),
     V2rayVotesReset(u32, i64),
@@ -177,27 +178,27 @@ pub enum State {
     AdminSetDonateMsg,
 }
 
-pub trait CutOff {
-    fn cut_off(&mut self, len: usize);
-}
-
-impl CutOff for String {
-    fn cut_off(&mut self, len: usize) {
-        let mut idx = len;
-        loop {
-            if self.is_char_boundary(idx) {
-                break;
-            }
-            idx -= 1;
-        }
-        self.truncate(idx)
-    }
-}
-
-impl CutOff for Option<String> {
-    fn cut_off(&mut self, len: usize) {
-        if let Some(v) = self {
-            v.cut_off(len)
-        }
-    }
-}
+// pub trait CutOff {
+//     fn cut_off(&mut self, len: usize);
+// }
+//
+// impl CutOff for String {
+//     fn cut_off(&mut self, len: usize) {
+//         let mut idx = len;
+//         loop {
+//             if self.is_char_boundary(idx) {
+//                 break;
+//             }
+//             idx -= 1;
+//         }
+//         self.truncate(idx)
+//     }
+// }
+//
+// impl CutOff for Option<String> {
+//     fn cut_off(&mut self, len: usize) {
+//         if let Some(v) = self {
+//             v.cut_off(len)
+//         }
+//     }
+// }

@@ -1,4 +1,9 @@
-use crate::{book::BookItem, error::AppErr, utils::cut_off, Ctx};
+use teloxide::{payloads::SendMessageSetters, prelude::Requester};
+
+use crate::{
+    Ctx, book::BookItem, config::Config, error::AppErr, session::Session,
+    state::KeyData, utils::cut_off,
+};
 use std::{fmt::Display, str::FromStr};
 
 #[derive(Debug, sqlx::FromRow)]
@@ -223,4 +228,59 @@ impl BookItem for V2ray {
     fn id(&self) -> i64 {
         self.id
     }
+}
+
+pub async fn v2ray_auto_update(s: &mut Session) {
+    let now = crate::utils::now();
+    if s.settings.v2ray_last_auto_update + Config::V2RAY_AUTO_UPDATE > now {
+        return;
+    }
+
+    let conf = Config::get();
+    let e = match v2ray_do_auto_update(s).await {
+        Ok((total, added)) => {
+            let m = format!("{added}/{total} v2ray auto from github 🐧");
+            s.bot
+                .send_message(conf.dev, m)
+                .reply_markup(KeyData::main_menu())
+                .await
+        }
+        Err(e) => {
+            let m = format!("auto update v2ray failed ❌\n\n{e:#?}");
+            s.bot
+                .send_message(conf.dev, m)
+                .reply_markup(KeyData::main_menu())
+                .await
+        }
+    };
+
+    if let Err(e) = e {
+        log::error!("send message to dev failed: {e:?}");
+    }
+}
+
+pub async fn v2ray_do_auto_update(s: &mut Session) -> Result<(u32, u32), AppErr> {
+    s.settings.v2ray_last_auto_update = crate::utils::now();
+    s.settings.set(&s.ctx.db).await?;
+
+    let conf = Config::get();
+    let res = conf.rc.get(Config::V2RAY_AUTO_UPDATE_URL).send().await?;
+    let data = res.text().await?;
+
+    let mut total = 0;
+    let mut added = 0;
+
+    for line in data.split('\n') {
+        if line.is_empty() {
+            continue;
+        }
+
+        let Some(mut v2) = V2ray::from_link(line) else { continue };
+        total += 1;
+        if v2.add(&s.ctx).await.is_ok() {
+            added += 1;
+        }
+    }
+
+    Ok((total, added))
 }

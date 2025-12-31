@@ -466,7 +466,7 @@ impl Session {
             vec![btn!(25), btn!(30)],
             vec![btn!(35), btn!(40)],
             vec![btn!(45), btn!(50)],
-            vec![KeyData::main_menu_btn()]
+            vec![KeyData::main_menu_btn()],
         ]);
 
         self.bot
@@ -599,7 +599,7 @@ impl Session {
         if self.karbar.is_admin() {
             ikb.push(vec![
                 InlineKeyboardButton::callback(
-                    "👇 منوی ادمین 👇",
+                    "👉 منوی ادمین 👇",
                     KeyData::Unknown,
                 ),
                 InlineKeyboardButton::callback("کاربر 🔍", kd!(gg, KarbarFind)),
@@ -629,6 +629,10 @@ impl Session {
                     kd!(gg, FlyerList),
                 ),
             ]);
+            ikb.push(vec![InlineKeyboardButton::callback(
+                "بروزرسانی خودکار v2ray 🤖",
+                kd!(gg, V2rayAudoUpdate),
+            )]);
         }
 
         self.bot
