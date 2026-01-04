@@ -100,6 +100,7 @@ impl Config {
     pub const CODE_ABC: &[u8] =
         b"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     pub const SEND_ALL_SLEEP: Duration = Duration::from_secs(10);
+    pub const SEND_ALL_NOTIF_AFTER: usize = 1024;
     pub const V2RAY_AUTO_UPDATE: i64 = 2 * 3600;
     pub const V2RAY_AUTO_UPDATE_URL: &str = "https://raw.githubusercontent.com/XIXV2RAY/XIX-v2ray/refs/heads/main/VIP.txt";
 

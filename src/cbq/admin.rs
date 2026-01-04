@@ -147,8 +147,9 @@ impl super::Cbq {
             Ag::V2rayAudoUpdate => {
                 match v2ray_do_auto_update(&mut self.s).await {
                     Ok((total, added)) => {
-                        let m =
-                            format!("{added} از {total} کانفیگ به صورت خودکار ادد شد ✅");
+                        let m = format!(
+                            "{added} از {total} کانفیگ به صورت خودکار ادد شد ✅"
+                        );
                         self.s
                             .bot
                             .send_message(self.s.cid, m)
@@ -361,6 +362,7 @@ impl super::Cbq {
                 tokio::task::spawn(async move {
                     let mut count = 0usize;
                     let mut page = 0u32;
+                    let mut last_sent = 0usize;
                     loop {
                         let Ok(ks) = Karbar::sa_list(&ctx, page).await else {
                             break;
@@ -388,13 +390,19 @@ impl super::Cbq {
                             }
                         }
 
-                        let m = format!(
-                            "🔔 پیام همگانی به {count} کاربر تاکنون ارسال شد ✅"
-                        );
-                        let _ = bot
-                            .send_message(bcid, m)
-                            .reply_markup(KeyData::main_menu())
-                            .await;
+                        if count.saturating_sub(last_sent)
+                            >= Config::SEND_ALL_NOTIF_AFTER
+                        {
+                            last_sent = count;
+                            let m = format!(
+                                "🔔 پیام همگانی به {count} کاربر تاکنون ارسال شد ✅"
+                            );
+                            let _ = bot
+                                .send_message(bcid, m)
+                                .reply_markup(KeyData::main_menu())
+                                .await;
+                        }
+
                         tokio::time::sleep(Config::SEND_ALL_SLEEP).await;
                         page += 1;
                     }
